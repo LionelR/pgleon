@@ -8,7 +8,8 @@ from PyQt4 import QtGui, QtCore
 from ui.widgets.qscint import QScint
 
 
-class MainUI(QtGui.QWidget):
+# class MainUI(QtGui.QWidget):
+class MainUI(QtGui.QMainWindow):
 
     def __init__(self):
         super(MainUI, self).__init__()
@@ -17,18 +18,17 @@ class MainUI(QtGui.QWidget):
 
     def initUI(self):
 
-        vbox = QtGui.QVBoxLayout(self)
+        self.menu_bar = self.menuBar()
+        self.init_menu()
 
-        self.run_btn = QtGui.QPushButton("&Run")
-        self.query_editor = QScint(self)
-        self.query_result = QtGui.QTableView(self)
-        self.query_msg = QtGui.QTextEdit(self)
+        self.tool_bar = self.addToolBar('Execute')
+
+        self.central_widget = QtGui.QWidget()
+        self.query_editor = QScint(self.central_widget)
+        self.query_result = QtGui.QTableView(self.central_widget)
+        self.query_msg = QtGui.QTextEdit(self.central_widget)
 
         tab = QtGui.QTabWidget()
-
-        vlayout1 = QtGui.QVBoxLayout(self.query_result)
-        vlayout2 = QtGui.QVBoxLayout(self.query_msg)
-
         tab.addTab(self.query_result, "Results")
         tab.addTab(self.query_msg, "Messages")
 
@@ -36,12 +36,33 @@ class MainUI(QtGui.QWidget):
         vsplitter.addWidget(self.query_editor)
         vsplitter.addWidget(tab)
 
-        vbox.addWidget(self.run_btn)
+        vbox = QtGui.QVBoxLayout(self.central_widget)
         vbox.addWidget(vsplitter)
 
-
-        self.setLayout(vbox)
+        self.central_widget.setLayout(vbox)
+        self.setCentralWidget(self.central_widget)
         # QtGui.QApplication.setStyle(QtGui.QStyleFactory.create('Cleanlooks'))
-        self.setGeometry(300, 300, 300, 200)
-        self.setWindowTitle('QtGui.QSplitter')
+        self.setGeometry(300, 300, 600, 400)
+
+        self.status_bar = self.statusBar()
+        self.set_status('Ready')
+
         self.show()
+
+    def init_menu(self):
+        exit_action = QtGui.QAction(QtGui.QIcon('icons/exit.png'), '&Exit', self)
+        exit_action.setShortcut('Ctrl+Q')
+        exit_action.setStatusTip('Exit application')
+        exit_action.triggered.connect(QtGui.qApp.quit)
+
+        file_menu = self.menu_bar.addMenu('&File')
+        file_menu.addAction(exit_action)
+
+    def set_title(self, title):
+        self.setWindowTitle(title)
+
+    def set_status(self, status):
+        self.status_bar.showMessage(status)
+
+
+
