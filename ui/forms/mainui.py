@@ -45,6 +45,8 @@ class MainUI(QtGui.QMainWindow):
         self.setGeometry(300, 300, 600, 400)
 
         self.status_bar = self.statusBar()
+        self.permanent_status_label = QtGui.QLabel()
+        self.status_bar.addPermanentWidget(self.permanent_status_label)
         self.set_status('Ready')
 
         self.show()
@@ -62,7 +64,13 @@ class MainUI(QtGui.QMainWindow):
         self.setWindowTitle(title)
 
     def set_status(self, status):
-        self.status_bar.showMessage(status)
+        # self.status_bar.showMessage(status)
+        self.permanent_status_label.setText(QtCore.QString(status))
 
+    def closeEvent(self, event):
+        settings = QtCore.QSettings("MyCompany", "MyApp")
+        settings.setValue("geometry", self.saveGeometry())
+        settings.setValue("windowState", self.saveState())
+        # self.closeEvent(event)
 
 

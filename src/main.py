@@ -27,6 +27,8 @@ class Main(MainUI):
         else:
             tm = QTableModel(res, headers, self)
             self.query_result.setModel(tm)
+            self.query_result.resizeColumnsToContents()
+            self.query_result.resizeRowsToContents()
             self.query_msg.setPlainText(conn.cur.statusmessage)
             self.set_status(conn.cur.statusmessage)
 

@@ -8,7 +8,6 @@ from: http://www.saltycrane.com/blog/2007/12/pyqt-43-qtableview-qabstracttablemo
 
 import operator
 from PyQt4.QtCore import *
-from PyQt4.QtGui import *
 
 
 class QTableModel(QAbstractTableModel):
