@@ -29,7 +29,10 @@ class Database(object):
                                 host=host)
 
     def execute(self, query, size=None):
-        self.cur.execute(query)
+        try:
+            self.cur.execute(query)
+        except Exception as e:
+            return None, DBError(e.__str__())
         headers = [c.name for c in self.cur.description]
         res = self.fetch(self.cur, size)
         return headers, res

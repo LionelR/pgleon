@@ -6,7 +6,7 @@ import sys
 __author__ = 'lionel'
 
 from src import db
-from ui.forms.mainui import MainUI
+from ui.forms.queryui import MainUI
 from ui.widgets.qtable import QTableModel
 
 name = "PGLeon"
@@ -19,17 +19,21 @@ class Main(MainUI):
         self.set_tool_bar()
 
     def __execute__(self, prefix=""):
-        query = prefix + unicode(self.query_editor.text())
+        query = unicode(self.query_editor.text())
+        if query.strip()=="":
+            return
+        query = prefix + unicode(query)
         conn = db.Database()
         headers, res = conn.execute(query)
         if isinstance(res, db.DBError):
             self.query_msg.setPlainText(QtCore.QString(res.get_msg()))
+            self.query_msg.setFocus()
         else:
             tm = QTableModel(res, headers, self)
             self.query_result.setModel(tm)
             self.query_result.resizeColumnsToContents()
             self.query_result.resizeRowsToContents()
-            self.query_msg.setPlainText(conn.cur.statusmessage)
+            # self.query_msg.setPlainText(conn.cur.statusmessage)
             self.set_status(conn.cur.statusmessage)
 
     def run_query(self):
