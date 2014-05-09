@@ -15,7 +15,6 @@ class Main(MainUI):
     def __init__(self):
         super(Main, self).__init__()
         self.set_title("{0:s} - {1:s}".format(name, version))
-        self.set_tool_bar()
 
     def append(self):
         pass

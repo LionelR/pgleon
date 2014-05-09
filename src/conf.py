@@ -15,6 +15,7 @@ conf_db = SqliteDatabase('pgleon.db')
 
 class Connection(Model):
     host = CharField()
+    port = CharField()
     database = CharField()
     user = CharField()
     password = CharField()
@@ -23,7 +24,7 @@ class Connection(Model):
         database = conf_db
         indexes = (
             # Index unique
-            (('host', 'database', 'user'), True),
+            (('host', 'port', 'database', 'user'), True),
         )
 
 
@@ -39,6 +40,6 @@ class Query(Model):
         database = conf_db
 
 
-Connection.create_table()
-Query.create_table()
+Connection.create_table(True)
+Query.create_table(True)
 
