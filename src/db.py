@@ -25,9 +25,9 @@ class Database(object):
         # database = "booktown"
         # user = "lionel"
         # password = "lionel"
-        self.connection()
+        self.connect()
 
-    def connection(self):
+    def connect(self):
         self.conn = psycopg2.connect(host=self.host,
                                      port=self.port,
                                      database=self.database,

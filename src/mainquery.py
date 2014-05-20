@@ -14,9 +14,11 @@ version = "0.1"
 
 
 class Main(MainUI):
-    def __init__(self):
+    def __init__(self, connParams):
         super(Main, self).__init__()
-        self.uiSetTitle("{0:s} - {1:s}".format(name, version))
+        self.connParams = connParams
+        name = self.connParams.pop('name')
+        self.uiSetTitle(name)
         self.setToolBar()
 
         self.uiQueryBook.setTabsClosable(True)
@@ -34,7 +36,7 @@ class Main(MainUI):
         if query.strip() == "":
             return
         query = prefix + unicode(query)
-        conn = db.Database()
+        conn = db.Database(**self.connParams)
         headers, res = conn.execute(query)
         if isinstance(res, db.DBError):
             page.uiQueryMsg.setPlainText(QtCore.QString(res.get_msg()))

@@ -1,8 +1,7 @@
 #-*- coding:utf-8 -*-
 from PyQt4 import QtGui
-from PyQt4 import QtCore
 import sys
-from peewee import fn
+from src.mainquery import Main as MainQuery
 
 __author__ = 'lionel'
 
@@ -37,6 +36,7 @@ class Main(MainUI):
         self.uiSaveButton.clicked.connect(self.onSave)
         self.uiCancelButton.clicked.connect(self.onCancel)
         self.uiTestButton.clicked.connect(self.onTest)
+        self.uiOpenButton.clicked.connect(self.onOpen)
 
         self.editMode(False)
         self.show()
@@ -111,32 +111,32 @@ class Main(MainUI):
         id = int(idItem.text())
         query = Connection.delete().where(Connection.id == id)
         query.execute()
-        # self.model.removeRows(index.row(), 1)
-        self.__removeRow(index)
+        row = index.row()
+        self.removeRow(row)
+        self.enabledEditButton()
 
     def onCancel(self):
         index = self.uiConnList.currentIndex()
         idItem = self.model.item(index.row(), 0)
+        row = index.row()
         if idItem.text() == TEMPID:
-            self.__removeRow(index)
+            self.removeRow(row)
+        else:
+            [self.model.setItem(row, col, self.editedRowItems[col]) for col in range(len(self.editedRowItems))]
+            self.selection.select(index, QtGui.QItemSelectionModel.Select)
+            self.uiConnList.setCurrentIndex(index)
         self.editMode(False)
 
     def onEdit(self):
         """Edit a previously created connection"""
+        index = self.uiConnList.currentIndex()
+        self.editedRowItems = [self.model.item(index.row(), col).clone() for col in range(self.model.columnCount())]
         self.editMode(True)
 
     def onTest(self):
         index = self.uiConnList.currentIndex()
-        item = self.model.itemFromIndex(index)
-        # Use of the mapper to retrieve the entered informations in the UI
-        id = unicode(self.model.item(index.row(), 0).text())
-        name = unicode(self.model.item(index.row(), 1).text())
-        host = unicode(self.model.item(index.row(), 2).text())
-        port = unicode(self.model.item(index.row(), 3).text())
-        database = unicode(self.model.item(index.row(), 4).text())
-        user = unicode(self.model.item(index.row(), 5).text())
-        password = unicode(self.model.item(index.row(), 6).text())
-
+        row = index.row()
+        id, name, host, port, database, user, password = self.rowData(row)
         try:
             conn = Database(host=host,
                             port=port,
@@ -150,20 +150,14 @@ class Main(MainUI):
 
     def onSave(self):
         index = self.uiConnList.currentIndex()
-        item = self.model.itemFromIndex(index)
-        # Use of the mapper to retrieve the entered informations in the UI
-        id = unicode(self.model.item(index.row(), 0).text())
-        name = unicode(self.model.item(index.row(), 1).text())
-        host = unicode(self.model.item(index.row(), 2).text())
-        port = unicode(self.model.item(index.row(), 3).text())
-        database = unicode(self.model.item(index.row(), 4).text())
-        user = unicode(self.model.item(index.row(), 5).text())
-        password = unicode(self.model.item(index.row(), 6).text())
+        row = index.row()
+        id, name, host, port, database, user, password = self.rowData(row)
         if id == TEMPID:  # we are in append mode, then we create a new connection
             query = Connection.create(name=name, host=host, port=port,
                                       database=database, user=user,
                                       password=password)
             query.save()
+            self.model.item(index.row(), 0).setText(str(query.id))
         else:  # we are in edit mode
             query = Connection.update(name=name, host=host, port=port,
                                       database=database, user=user,
@@ -171,8 +165,23 @@ class Main(MainUI):
             query.execute()
         self.editMode(False)
 
-    def __removeRow(self, index):
-        self.model.removeRows(index.row(), 1)
+    def onOpen(self):
+        index = self.uiConnList.currentIndex()
+        row = index.row()
+        r = self.rowData(row)
+        connParams = dict(name=r[1],
+                          host=r[2],
+                          port=r[3],
+                          database=r[4],
+                          user=r[5],
+                          password=r[6]
+                          )
+        print(connParams)
+        self.mainquery = MainQuery(connParams)
+        self.mainquery.show()
+
+    def removeRow(self, row):
+        self.model.removeRows(row, 1)
         if self.model.rowCount() == 0:
             self.uiNameEdit.clear()
             self.uiHostEdit.clear()
@@ -180,6 +189,18 @@ class Main(MainUI):
             self.uiDatabaseEdit.clear()
             self.uiUserEdit.clear()
             self.uiPasswordEdit.clear()
+
+    def rowData(self, row):
+        """Returns datas contained in the model at a specified row"""
+        #We use the mapper to retrieve datas entered in the widgets
+        id = unicode(self.model.item(row, 0).text())
+        name = unicode(self.model.item(row, 1).text())
+        host = unicode(self.model.item(row, 2).text())
+        port = unicode(self.model.item(row, 3).text())
+        database = unicode(self.model.item(row, 4).text())
+        user = unicode(self.model.item(row, 5).text())
+        password = unicode(self.model.item(row, 6).text())
+        return [id, name, host, port, database, user, password]
 
     def editMode(self, mode=True):
         """Switch buttons when in edit mode or not"""
@@ -197,11 +218,18 @@ class Main(MainUI):
         self.uiDatabaseEdit.setEnabled(mode)
         self.uiUserEdit.setEnabled(mode)
         self.uiPasswordEdit.setEnabled(mode)
+        self.enabledEditButton()
+
+    def enabledEditButton(self):
+        """Test if the edit button can be enabled"""
+        if self.model.rowCount() == 0:
+            self.uiEditButton.setEnabled(False)
 
 
 def main():
     app = QtGui.QApplication(sys.argv)
     ex = Main()
+    ex.show()
     sys.exit(app.exec_())
 
 
