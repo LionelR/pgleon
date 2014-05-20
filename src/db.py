@@ -14,19 +14,26 @@ class DBError:
 
 
 class Database(object):
-    def __init__(self):
-        host = "localhost"
-        database = "booktown"
-        user = "lionel"
-        password = "lionel"
-        self.conn = self.connection(database, user, password, host)
-        self.cur = self.conn.cursor()
+    def __init__(self, host, port, database, user, password):
+        self.host = host
+        self.port = port
+        self.database = database
+        self.user = user
+        self.password = password
+        # host = "localhost"
+        # port = "5432"
+        # database = "booktown"
+        # user = "lionel"
+        # password = "lionel"
+        self.connection()
 
-    def connection(self, database, user, password, host=None):
-        return psycopg2.connect(database=database,
-                                user=user,
-                                password=password,
-                                host=host)
+    def connection(self):
+        self.conn = psycopg2.connect(host=self.host,
+                                     port=self.port,
+                                     database=self.database,
+                                     user=self.user,
+                                     password=self.password)
+        self.cur = self.conn.cursor()
 
     def execute(self, query, size=None):
         try:

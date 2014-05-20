@@ -8,6 +8,7 @@ __author__ = 'lionel'
 
 from ui.forms.confui import MainUI
 from src.conf import Connection
+from src.db import Database
 
 name = "PGLeon"
 version = "0.1"
@@ -27,12 +28,16 @@ class Main(MainUI):
         self.uiConnList.setModel(self.model)
         self.uiConnList.setModelColumn(1)  #Show the name of the connection, stored in the second column of the model
         self.selection = self.uiConnList.selectionModel()
+
+        #Signals
         self.selection.currentChanged.connect(self.onItemChanged)
         self.uiEditButton.clicked.connect(self.onEdit)
         self.uiAppendButton.clicked.connect(self.onAdd)
         self.uiDeleteButton.clicked.connect(self.onDelete)
         self.uiSaveButton.clicked.connect(self.onSave)
         self.uiCancelButton.clicked.connect(self.onCancel)
+        self.uiTestButton.clicked.connect(self.onTest)
+
         self.editMode(False)
         self.show()
 
@@ -120,6 +125,29 @@ class Main(MainUI):
         """Edit a previously created connection"""
         self.editMode(True)
 
+    def onTest(self):
+        index = self.uiConnList.currentIndex()
+        item = self.model.itemFromIndex(index)
+        # Use of the mapper to retrieve the entered informations in the UI
+        id = unicode(self.model.item(index.row(), 0).text())
+        name = unicode(self.model.item(index.row(), 1).text())
+        host = unicode(self.model.item(index.row(), 2).text())
+        port = unicode(self.model.item(index.row(), 3).text())
+        database = unicode(self.model.item(index.row(), 4).text())
+        user = unicode(self.model.item(index.row(), 5).text())
+        password = unicode(self.model.item(index.row(), 6).text())
+
+        try:
+            conn = Database(host=host,
+                            port=port,
+                            database=database,
+                            user=user,
+                            password=password)
+            conn.close()
+            QtGui.QMessageBox.information(self, "Success", "Successful connection", QtGui.QMessageBox.Ok)
+        except Exception, error:
+            QtGui.QMessageBox.critical(self, "Error", str(error), QtGui.QMessageBox.Ok)
+
     def onSave(self):
         index = self.uiConnList.currentIndex()
         item = self.model.itemFromIndex(index)
@@ -136,7 +164,7 @@ class Main(MainUI):
                                       database=database, user=user,
                                       password=password)
             query.save()
-        else: # we are in edit mode
+        else:  # we are in edit mode
             query = Connection.update(name=name, host=host, port=port,
                                       database=database, user=user,
                                       password=password).where(Connection.id == id)

@@ -8,10 +8,10 @@ from PyQt4 import QtGui, QtCore
 from ui.widgets.qscint import QScint
 
 
-class QueryTab(QtGui.QWidget):
+class QueryPage(QtGui.QWidget):
     """Represent a page in the central tabwidget widget. Each page is a particular query"""
     def __init__(self, *args, **kwargs):
-        super(QueryTab, self).__init__(*args, **kwargs)
+        super(QueryPage, self).__init__(*args, **kwargs)
         self.initUI()
 
     def initUI(self):
@@ -47,11 +47,8 @@ class MainUI(QtGui.QMainWindow):
 
         self.uiToolBar = self.addToolBar('Execute')
 
-        self.uiCentralWidget = QtGui.QTabWidget()
-        # vBox = QtGui.QVBoxLayout()
-        # vBox.addWidget(self.uiCentralWidget)
-        # self.uiCentralWidget.setLayout(vBox)
-        self.setCentralWidget(self.uiCentralWidget)
+        self.uiQueryBook = QtGui.QTabWidget()
+        self.setCentralWidget(self.uiQueryBook)
 
         self.setGeometry(300, 300, 600, 400)
 
@@ -78,9 +75,10 @@ class MainUI(QtGui.QMainWindow):
         self.uiPermanentStatusLabel.setText(QtCore.QString(status))
 
     def closeEvent(self, event):
-        settings = QtCore.QSettings("MyCompany", "MyApp")
-        settings.setValue("geometry", self.saveGeometry())
-        settings.setValue("windowState", self.saveState())
+        pass
+        # settings = QtCore.QSettings("MyCompany", "MyApp")
+        # settings.setValue("geometry", self.saveGeometry())
+        # settings.setValue("windowState", self.saveState())
         # self.closeEvent(event)
 
 
