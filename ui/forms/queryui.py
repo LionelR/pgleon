@@ -8,64 +8,74 @@ from PyQt4 import QtGui, QtCore
 from ui.widgets.qscint import QScint
 
 
+class QueryTab(QtGui.QWidget):
+    """Represent a page in the central tabwidget widget. Each page is a particular query"""
+    def __init__(self, *args, **kwargs):
+        super(QueryTab, self).__init__(*args, **kwargs)
+        self.initUI()
+
+    def initUI(self):
+        self.uiQueryEditor = QScint(self)
+        self.uiQueryResult = QtGui.QTableView(self)
+        self.uiQueryMsg = QtGui.QTextEdit(self)
+        self.uiStatusLabel = QtGui.QLabel(self)
+
+        self.uiTab = QtGui.QTabWidget(self)
+        self.uiTab.addTab(self.uiQueryResult, "Results")
+        self.uiTab.addTab(self.uiQueryMsg, "Messages")
+
+        uiVSplitter = QtGui.QSplitter(QtCore.Qt.Vertical)
+        uiVSplitter.addWidget(self.uiQueryEditor)
+        uiVSplitter.addWidget(self.uiTab)
+        uiHBox = QtGui.QVBoxLayout(self)
+        uiHBox.addWidget(uiVSplitter)
+        uiHBox.addWidget(self.uiStatusLabel)
+
+        self.setLayout(uiHBox)
+
+
 # class MainUI(QtGui.QWidget):
 class MainUI(QtGui.QMainWindow):
 
     def __init__(self):
         super(MainUI, self).__init__()
-
         self.initUI()
 
     def initUI(self):
+        self.uiMenuBar = self.menuBar()
+        self.initMenu()
 
-        self.menu_bar = self.menuBar()
-        self.init_menu()
+        self.uiToolBar = self.addToolBar('Execute')
 
-        self.tool_bar = self.addToolBar('Execute')
+        self.uiCentralWidget = QtGui.QTabWidget()
+        # vBox = QtGui.QVBoxLayout()
+        # vBox.addWidget(self.uiCentralWidget)
+        # self.uiCentralWidget.setLayout(vBox)
+        self.setCentralWidget(self.uiCentralWidget)
 
-        self.central_widget = QtGui.QWidget()
-        self.query_editor = QScint(self.central_widget)
-        self.query_result = QtGui.QTableView(self.central_widget)
-        self.query_msg = QtGui.QTextEdit(self.central_widget)
-
-        tab = QtGui.QTabWidget()
-        tab.addTab(self.query_result, "Results")
-        tab.addTab(self.query_msg, "Messages")
-
-        vsplitter = QtGui.QSplitter(QtCore.Qt.Vertical)
-        vsplitter.addWidget(self.query_editor)
-        vsplitter.addWidget(tab)
-
-        vbox = QtGui.QVBoxLayout(self.central_widget)
-        vbox.addWidget(vsplitter)
-
-        self.central_widget.setLayout(vbox)
-        self.setCentralWidget(self.central_widget)
-        # QtGui.QApplication.setStyle(QtGui.QStyleFactory.create('Cleanlooks'))
         self.setGeometry(300, 300, 600, 400)
 
-        self.status_bar = self.statusBar()
-        self.permanent_status_label = QtGui.QLabel()
-        self.status_bar.addPermanentWidget(self.permanent_status_label)
-        self.set_status('Ready')
+        self.uiStatusBar = self.statusBar()
+        self.uiPermanentStatusLabel = QtGui.QLabel()
+        self.uiStatusBar.addPermanentWidget(self.uiPermanentStatusLabel)
+        self.setStatus('Ready')
 
         self.show()
 
-    def init_menu(self):
-        exit_action = QtGui.QAction(QtGui.QIcon('icons/exit.png'), '&Exit', self)
-        exit_action.setShortcut('Ctrl+Q')
-        exit_action.setStatusTip('Exit application')
-        exit_action.triggered.connect(QtGui.qApp.quit)
+    def initMenu(self):
+        uiExitAction = QtGui.QAction(QtGui.QIcon('icons/exit.png'), '&Exit', self)
+        uiExitAction.setShortcut('Ctrl+Q')
+        uiExitAction.setStatusTip('Exit application')
+        uiExitAction.triggered.connect(QtGui.qApp.quit)
 
-        file_menu = self.menu_bar.addMenu('&File')
-        file_menu.addAction(exit_action)
+        uiFileMenu = self.uiMenuBar.addMenu('&File')
+        uiFileMenu.addAction(uiExitAction)
 
-    def set_title(self, title):
+    def uiSetTitle(self, title):
         self.setWindowTitle(title)
 
-    def set_status(self, status):
-        # self.status_bar.showMessage(status)
-        self.permanent_status_label.setText(QtCore.QString(status))
+    def setStatus(self, status):
+        self.uiPermanentStatusLabel.setText(QtCore.QString(status))
 
     def closeEvent(self, event):
         settings = QtCore.QSettings("MyCompany", "MyApp")

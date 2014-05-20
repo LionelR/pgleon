@@ -19,13 +19,14 @@ class Connection(Model):
     database = CharField()
     user = CharField()
     password = CharField()
+    name = CharField()
 
     class Meta:
         database = conf_db
-        indexes = (
-            # Index unique
-            (('host', 'port', 'database', 'user'), True),
-        )
+        # indexes = (
+        #     # Index unique
+        #     (('host', 'port', 'database', 'user'), True),
+        # )
 
 
 class Query(Model):

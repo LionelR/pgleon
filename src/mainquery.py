@@ -6,7 +6,7 @@ import sys
 __author__ = 'lionel'
 
 from src import db
-from ui.forms.queryui import MainUI
+from ui.forms.queryui import MainUI, QueryTab
 from ui.widgets.qtable import QTableModel
 
 name = "PGLeon"
@@ -15,59 +15,62 @@ version = "0.1"
 class Main(MainUI):
     def __init__(self):
         super(Main, self).__init__()
-        self.set_title("{0:s} - {1:s}".format(name, version))
-        self.set_tool_bar()
+        self.uiSetTitle("{0:s} - {1:s}".format(name, version))
+        self.setToolBar()
+        self.firstPage = QueryTab(self)
+        self.uiCentralWidget.addTab(self.firstPage, "Query1")
 
-    def __execute__(self, prefix=""):
-        query = unicode(self.query_editor.text())
+    def execute(self, prefix=""):
+        query = unicode(self.firstPage.uiQueryEditor.text())
         if query.strip()=="":
             return
         query = prefix + unicode(query)
         conn = db.Database()
         headers, res = conn.execute(query)
         if isinstance(res, db.DBError):
-            self.query_msg.setPlainText(QtCore.QString(res.get_msg()))
-            self.query_msg.setFocus()
+            self.firstPage.uiQueryMsg.setPlainText(QtCore.QString(res.get_msg()))
+            self.firstPage.uiTab.setCurrentWidget(self.uiQueryMsg)
         else:
             tm = QTableModel(res, headers, self)
-            self.query_result.setModel(tm)
-            self.query_result.resizeColumnsToContents()
-            self.query_result.resizeRowsToContents()
-            # self.query_msg.setPlainText(conn.cur.statusmessage)
-            self.set_status(conn.cur.statusmessage)
+            self.firstPage.uiQueryResult.setModel(tm)
+            self.firstPage.uiQueryResult.resizeColumnsToContents()
+            self.firstPage.uiQueryResult.resizeRowsToContents()
+            self.firstPage.uiTab.setCurrentWidget(self.uiQueryResult)
+            self.setStatus(conn.cur.statusmessage)
 
-    def run_query(self):
-        self.__execute__()
+    def runQuery(self):
+        self.execute()
 
-    def explain_query(self):
-        self.__execute__(prefix=u"EXPLAIN ")
+    def explainQuery(self):
+        self.execute(prefix=u"EXPLAIN ")
 
-    def analyse_query(self):
-        self.__execute__(prefix=u"EXPLAIN ANALYSE ")
+    def analyseQuery(self):
+        self.execute(prefix=u"EXPLAIN ANALYSE ")
 
-    def set_tool_bar(self):
-        run_action = QtGui.QAction(QtGui.QIcon('icons/run.png'), '&Run', self)
-        run_action.setShortcut('Ctrl+R')
-        run_action.setStatusTip('Run query')
-        run_action.triggered.connect(self.run_query)
-        self.tool_bar.addAction(run_action)
+    def setToolBar(self):
+        uiRunAction = QtGui.QAction(QtGui.QIcon('icons/run.png'), '&Run', self)
+        uiRunAction.setShortcut('Ctrl+R')
+        uiRunAction.setStatusTip('Run query')
+        uiRunAction.triggered.connect(self.runQuery)
+        self.uiToolBar.addAction(uiRunAction)
 
-        explain_action = QtGui.QAction(QtGui.QIcon('icons/explain.png'), '&Explain', self)
-        explain_action.setShortcut('Ctrl+E')
-        explain_action.setStatusTip('Explain query')
-        explain_action.triggered.connect(self.explain_query)
-        self.tool_bar.addAction(explain_action)
+        uiExplainAction = QtGui.QAction(QtGui.QIcon('icons/explain.png'), '&Explain', self)
+        uiExplainAction.setShortcut('Ctrl+E')
+        uiExplainAction.setStatusTip('Explain query')
+        uiExplainAction.triggered.connect(self.explainQuery)
+        self.uiToolBar.addAction(uiExplainAction)
 
-        analyse_action = QtGui.QAction(QtGui.QIcon('icons/analyse.png'), '&Analyse', self)
-        analyse_action.setShortcut('Ctrl+A')
-        analyse_action.setStatusTip('Analyse query')
-        analyse_action.triggered.connect(self.analyse_query)
-        self.tool_bar.addAction(analyse_action)
+        uiAnalyseAction = QtGui.QAction(QtGui.QIcon('icons/analyse.png'), '&Analyse', self)
+        uiAnalyseAction.setShortcut('Ctrl+A')
+        uiAnalyseAction.setStatusTip('Analyse query')
+        uiAnalyseAction.triggered.connect(self.analyseQuery)
+        self.uiToolBar.addAction(uiAnalyseAction)
 
 def main():
 
     app = QtGui.QApplication(sys.argv)
     ex = Main()
+    ex.show()
     sys.exit(app.exec_())
 
 
