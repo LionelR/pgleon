@@ -13,9 +13,9 @@ name = "PGLeon"
 version = "0.1"
 
 
-class Main(MainUI):
+class MainQueryBook(MainUI):
     def __init__(self, connParams):
-        super(Main, self).__init__()
+        super(MainQueryBook, self).__init__()
         self.connParams = connParams
         name = self.connParams.pop('name')
         self.uiSetTitle(name)
@@ -101,7 +101,7 @@ class Main(MainUI):
 
 def main():
     app = QtGui.QApplication(sys.argv)
-    ex = Main()
+    ex = MainQueryBook()
     ex.show()
     sys.exit(app.exec_())
 

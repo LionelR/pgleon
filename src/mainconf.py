@@ -1,7 +1,7 @@
 #-*- coding:utf-8 -*-
 from PyQt4 import QtGui
 import sys
-from src.mainquery import Main as MainQuery
+from src.mainquery import MainQueryBook
 
 __author__ = 'lionel'
 
@@ -15,9 +15,9 @@ version = "0.1"
 TEMPID = "-999"
 
 
-class Main(MainUI):
+class MainConf(MainUI):
     def __init__(self):
-        super(Main, self).__init__()
+        super(MainConf, self).__init__()
         self.setTitle("{0:s} - {1:s}".format(name, version))
         self.initMenu()
 
@@ -176,9 +176,8 @@ class Main(MainUI):
                           user=r[5],
                           password=r[6]
                           )
-        print(connParams)
-        self.mainquery = MainQuery(connParams)
-        self.mainquery.show()
+        self.mainQueryBook = MainQueryBook(connParams)
+        self.mainQueryBook.show()
 
     def removeRow(self, row):
         self.model.removeRows(row, 1)
@@ -228,7 +227,7 @@ class Main(MainUI):
 
 def main():
     app = QtGui.QApplication(sys.argv)
-    ex = Main()
+    ex = MainConf()
     ex.show()
     sys.exit(app.exec_())
 
