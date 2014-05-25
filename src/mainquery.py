@@ -6,19 +6,24 @@ import sys
 __author__ = 'lionel'
 
 from src import db
-from ui.forms.queryui import MainUI, QueryPage
+from ui.forms.queryui import MainUI, QueryPageUI
 from ui.widgets.qtable import QTableModel
 
-name = "PGLeon"
-version = "0.1"
+
+class QueryPage(QueryPageUI):
+    def __init__(self, *args, **kwargs):
+        self.connection = kwargs.pop("connection")
+        super(QueryPage, self).__init__(*args, **kwargs)
+
+    def currentConnection(self):
+        return self.connection
 
 
 class MainQueryBook(MainUI):
-    def __init__(self, connParams):
+    def __init__(self, database):
         super(MainQueryBook, self).__init__()
-        self.connParams = connParams
-        name = self.connParams.pop('name')
-        self.uiSetTitle(name)
+        self.database = database
+        self.uiSetTitle(self.database.name)
         self.setToolBar()
 
         self.uiQueryBook.setTabsClosable(True)
@@ -32,22 +37,23 @@ class MainQueryBook(MainUI):
 
     def execute(self, prefix=""):
         page = self.uiQueryBook.currentWidget()
+        connection = page.currentConnection()
         query = unicode(page.uiQueryEditor.text())
         if query.strip() == "":
             return
         query = prefix + unicode(query)
-        conn = db.Database(**self.connParams)
-        headers, res = conn.execute(query)
+
+        headers, res, status = db.execute(connection, query)
         if isinstance(res, db.DBError):
-            page.uiQueryMsg.setPlainText(QtCore.QString(res.get_msg()))
-            page.uiTab.setCurrentWidget(self.uiQueryMsg)
+            page.uiQueryMsg.setPlainText(QtCore.QString.fromUtf8(res.get_msg()))
+            page.uiTab.setCurrentWidget(page.uiQueryMsg)
         else:
             tm = QTableModel(res, headers, self)
             page.uiQueryResult.setModel(tm)
             page.uiQueryResult.resizeColumnsToContents()
             page.uiQueryResult.resizeRowsToContents()
-            page.uiTab.setCurrentWidget(self.uiQueryResult)
-            self.setStatus(conn.cur.statusmessage)
+            page.uiTab.setCurrentWidget(page.uiQueryResult)
+            page.setStatus(status)
 
     def runQuery(self):
         self.execute()
@@ -61,7 +67,7 @@ class MainQueryBook(MainUI):
     def newQueryPage(self):
         """Add a new query page to the book"""
         name = "Query_%i"%self._pageCount()
-        page = QueryPage()
+        page = QueryPage(connection=self.database.newConnection())
         self.uiQueryBook.addTab(page, name)
         self.uiQueryBook.setCurrentWidget(page)
 
@@ -71,7 +77,10 @@ class MainQueryBook(MainUI):
         return self.pageCount
 
     def onClosePage(self, index):
+        page = self.uiQueryBook.currentWidget()
+        page.currentConn().close()
         self.uiQueryBook.removeTab(index)
+        del page
 
     def setToolBar(self):
         uiNewAction = QtGui.QAction(QtGui.QIcon('icons/plus.png'), '&New', self)

@@ -19,6 +19,7 @@ class MainConf(MainUI):
     def __init__(self):
         super(MainConf, self).__init__()
         self.setTitle("{0:s} - {1:s}".format(name, version))
+        self.queryBookList = list()
         self.initMenu()
 
         # All others stuffs
@@ -133,21 +134,6 @@ class MainConf(MainUI):
         self.editedRowItems = [self.model.item(index.row(), col).clone() for col in range(self.model.columnCount())]
         self.editMode(True)
 
-    def onTest(self):
-        index = self.uiConnList.currentIndex()
-        row = index.row()
-        id, name, host, port, database, user, password = self.rowData(row)
-        try:
-            conn = Database(host=host,
-                            port=port,
-                            database=database,
-                            user=user,
-                            password=password)
-            conn.close()
-            QtGui.QMessageBox.information(self, "Success", "Successful connection", QtGui.QMessageBox.Ok)
-        except Exception, error:
-            QtGui.QMessageBox.critical(self, "Error", str(error), QtGui.QMessageBox.Ok)
-
     def onSave(self):
         index = self.uiConnList.currentIndex()
         row = index.row()
@@ -165,19 +151,38 @@ class MainConf(MainUI):
             query.execute()
         self.editMode(False)
 
+    def onTest(self):
+        database = self.openDatabase()
+        try:
+            connection = database.newConnection()
+            connection.close()
+            QtGui.QMessageBox.information(self, "Success", "Successful connection", QtGui.QMessageBox.Ok)
+        except Exception, error:
+            QtGui.QMessageBox.critical(self, "Error", str(error), QtGui.QMessageBox.Ok)
+
     def onOpen(self):
+        database = self.openDatabase()
+        try:
+            connection = database.newConnection()
+            connection.close()
+            queryBook = MainQueryBook(database)
+            self.queryBookList.append(queryBook)
+            queryBook.show()
+        except Exception, error:
+            QtGui.QMessageBox.critical(self, "Error", str(error), QtGui.QMessageBox.Ok)
+
+    def openDatabase(self):
+        """Create an instance of the current selected database"""
         index = self.uiConnList.currentIndex()
         row = index.row()
-        r = self.rowData(row)
-        connParams = dict(name=r[1],
-                          host=r[2],
-                          port=r[3],
-                          database=r[4],
-                          user=r[5],
-                          password=r[6]
-                          )
-        self.mainQueryBook = MainQueryBook(connParams)
-        self.mainQueryBook.show()
+        id, name, host, port, database, user, password = self.rowData(row)
+        database = Database(name=name,
+                            host=host,
+                            port=port,
+                            database=database,
+                            user=user,
+                            password=password)
+        return database
 
     def removeRow(self, row):
         self.model.removeRows(row, 1)

@@ -2,7 +2,7 @@
 
 __author__ = 'lionel'
 
-from PyQt4 import QtGui, QtCore
+from PyQt4 import QtGui
 
 
 

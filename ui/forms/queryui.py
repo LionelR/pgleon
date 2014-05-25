@@ -2,16 +2,15 @@
 
 __author__ = 'lionel'
 
-import sys
 from PyQt4 import QtGui, QtCore
 
 from ui.widgets.qscint import QScint
 
 
-class QueryPage(QtGui.QWidget):
+class QueryPageUI(QtGui.QWidget):
     """Represent a page in the central tabwidget widget. Each page is a particular query"""
     def __init__(self, *args, **kwargs):
-        super(QueryPage, self).__init__(*args, **kwargs)
+        super(QueryPageUI, self).__init__(*args, **kwargs)
         self.initUI()
 
     def initUI(self):
@@ -27,11 +26,14 @@ class QueryPage(QtGui.QWidget):
         uiVSplitter = QtGui.QSplitter(QtCore.Qt.Vertical)
         uiVSplitter.addWidget(self.uiQueryEditor)
         uiVSplitter.addWidget(self.uiTab)
-        uiHBox = QtGui.QVBoxLayout(self)
-        uiHBox.addWidget(uiVSplitter)
-        uiHBox.addWidget(self.uiStatusLabel)
+        uiVBox = QtGui.QVBoxLayout(self)
+        uiVBox.addWidget(uiVSplitter)
+        uiVBox.addWidget(self.uiStatusLabel)
 
-        self.setLayout(uiHBox)
+        self.setLayout(uiVBox)
+
+    def setStatus(self, status):
+        self.uiStatusLabel.setText(status)
 
 
 # class MainUI(QtGui.QWidget):
@@ -43,7 +45,7 @@ class MainUI(QtGui.QMainWindow):
 
     def initUI(self):
         self.uiMenuBar = self.menuBar()
-        self.initMenu()
+        # self.initMenu()
 
         self.uiToolBar = self.addToolBar('Execute')
 
@@ -53,29 +55,23 @@ class MainUI(QtGui.QMainWindow):
         self.setGeometry(300, 300, 600, 400)
 
         self.uiStatusBar = self.statusBar()
-        self.uiPermanentStatusLabel = QtGui.QLabel()
-        self.uiStatusBar.addPermanentWidget(self.uiPermanentStatusLabel)
-        self.setStatus('Ready')
 
         self.show()
 
-    def initMenu(self):
-        uiExitAction = QtGui.QAction(QtGui.QIcon('icons/exit.png'), '&Exit', self)
-        uiExitAction.setShortcut('Ctrl+Q')
-        uiExitAction.setStatusTip('Exit application')
-        uiExitAction.triggered.connect(QtGui.qApp.quit)
-
-        uiFileMenu = self.uiMenuBar.addMenu('&File')
-        uiFileMenu.addAction(uiExitAction)
+    # def initMenu(self):
+    #     uiExitAction = QtGui.QAction(QtGui.QIcon('icons/exit.png'), '&Exit', self)
+    #     uiExitAction.setShortcut('Ctrl+Q')
+    #     uiExitAction.setStatusTip('Exit application')
+    #     uiExitAction.triggered.connect(QtGui.qApp.quit)
+    #
+    #     uiFileMenu = self.uiMenuBar.addMenu('&File')
+    #     uiFileMenu.addAction(uiExitAction)
 
     def uiSetTitle(self, title):
         self.setWindowTitle(title)
 
-    def setStatus(self, status):
-        self.uiPermanentStatusLabel.setText(QtCore.QString(status))
-
-    def closeEvent(self, event):
-        pass
+    # def closeEvent(self, event):
+    #     pass
         # settings = QtCore.QSettings("MyCompany", "MyApp")
         # settings.setValue("geometry", self.saveGeometry())
         # settings.setValue("windowState", self.saveState())
