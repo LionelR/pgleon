@@ -1,24 +1,21 @@
 #-*- coding:utf-8 -*-
-from PyQt4 import QtGui
-import sys
-from src.mainquery import MainQueryBook
 
 __author__ = 'lionel'
 
+from PyQt4 import QtGui
 from ui.forms.confui import MainUI
 from src.conf import Connection
 from src.db import Database
+from src.mainquery import MainQueryBook
 
-name = "PGLeon"
-version = "0.1"
 
 TEMPID = "-999"
 
 
 class MainConf(MainUI):
-    def __init__(self):
+    def __init__(self, title=""):
         super(MainConf, self).__init__()
-        self.setTitle("{0:s} - {1:s}".format(name, version))
+        self.setTitle(title)
         self.queryBookList = list()
         self.initMenu()
 
@@ -228,14 +225,3 @@ class MainConf(MainUI):
         """Test if the edit button can be enabled"""
         if self.model.rowCount() == 0:
             self.uiEditButton.setEnabled(False)
-
-
-def main():
-    app = QtGui.QApplication(sys.argv)
-    ex = MainConf()
-    ex.show()
-    sys.exit(app.exec_())
-
-
-if __name__ == '__main__':
-    main()

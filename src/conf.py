@@ -8,6 +8,10 @@ Gestion de la partie configuration de pgleon.
 """
 
 from peewee import SqliteDatabase, Model, CharField, ForeignKeyField, BooleanField, TextField
+from PyQt4.QtGui import QDesktopServices
+
+d = QDesktopServices.storageLocation(QDesktopServices.DataLocation)
+print(d)
 
 #TODO : mettre la base dans le répertoire personnel de l'utilisateur
 conf_db = SqliteDatabase('pgleon.db')
@@ -30,9 +34,14 @@ class Connection(Model):
         # )
 
 
+class Section(Model):
+    connection = ForeignKeyField(Connection, related_name='sections')
+    name = CharField(null=False)
+
+
 class Query(Model):
     connection = ForeignKeyField(Connection, related_name='queries')
-    section = CharField(null=False)
+    section = ForeignKeyField(Section, related_name='queries')
     name = CharField(null=False)
     description = CharField()
     query = TextField(null=False)
@@ -53,38 +62,22 @@ Query.create_table(True)
 
 def fixtures():
     """Create defaults items"""
-    try:
-        connection = Connection.select().where(Connection.internal == True).get()
-    except:
-        connection = Connection(internal=True)
-        connection.save()
-
-    try:
-        queries = Query.select().where(Query.internal == True).get()
-    except:
-        qList = [["Tables list", "List tables except system ones",
-                  """SELECT table_name
+    qList = [["Tables list", "List tables except system ones",
+              """SELECT table_name
 FROM information_schema.tables
 WHERE table_type = 'BASE TABLE'
 AND table_schema NOT IN ('pg_catalog', 'information_schema');"""],
-                 ["All tables list", "List all tables, including system tables",
-                  """SELECT table_name
+             ["All tables list", "List all tables, including system tables",
+              """SELECT table_name
 FROM information_schema.tables
 WHERE table_type = 'BASE TABLE';"""],
-                 ["Views list","List views except system ones",
-                  """SELECT table_name
+             ["Views list", "List views except system ones",
+              """SELECT table_name
 FROM information_schema.views
 WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
 AND table_name !~ '^pg_';"""],
-                 ["ALl views list","List all views, including system views",
-                  """SELECT table_name
+             ["ALl views list", "List all views, including system views",
+              """SELECT table_name
 FROM information_schema.views;"""]
-        ]
-        for name, description, queryText in qList:
-            query = Query(connection=connection,
-                          section="Global",
-                          name=name,
-                          description=description,
-                          query=queryText,
-                          internal=True,)
+    ]
 
