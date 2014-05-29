@@ -6,7 +6,8 @@ import sys
 __author__ = 'lionel'
 
 from src import db
-from ui.forms.queryui import MainUI, QueryPageUI
+from src.mainbookmarks import ShowBookMarks
+from ui.forms.querybookui import QueryBookUI, QueryPageUI
 from ui.widgets.qtable import QTableModel
 
 
@@ -19,7 +20,7 @@ class QueryPage(QueryPageUI):
         return self.connection
 
 
-class MainQueryBook(MainUI):
+class MainQueryBook(QueryBookUI):
     def __init__(self, database):
         super(MainQueryBook, self).__init__()
         self.database = database
@@ -70,6 +71,7 @@ class MainQueryBook(MainUI):
         page = QueryPage(connection=self.database.newConnection())
         self.uiQueryBook.addTab(page, name)
         self.uiQueryBook.setCurrentWidget(page)
+        return page
 
     def _pageCount(self):
         """A page counter"""
@@ -78,7 +80,7 @@ class MainQueryBook(MainUI):
 
     def onClosePage(self, index):
         page = self.uiQueryBook.currentWidget()
-        page.currentConn().close()
+        page.currentConnection().close()
         self.uiQueryBook.removeTab(index)
         del page
 
@@ -102,10 +104,16 @@ class MainQueryBook(MainUI):
         self.uiToolBar.addAction(uiExplainAction)
 
         uiAnalyseAction = QtGui.QAction(QtGui.QIcon('icons/analyse.png'), '&Analyse', self)
-        uiAnalyseAction.setShortcut('Ctrl+A')
+        # uiAnalyseAction.setShortcut('Ctrl+A')
         uiAnalyseAction.setStatusTip('Analyse query')
         uiAnalyseAction.triggered.connect(self.analyseQuery)
         self.uiToolBar.addAction(uiAnalyseAction)
+
+        uiShowBookMarksAction = QtGui.QAction(QtGui.QIcon('icons/bookmarks.png'), '&Bookmarks', self)
+        uiShowBookMarksAction.setShortcut('Ctrl+B')
+        uiShowBookMarksAction.setStatusTip('Show all bookmarks')
+        uiShowBookMarksAction.setMenu(ShowBookMarks(database=self.database, parent=self))
+        self.uiToolBar.addAction(uiShowBookMarksAction)
 
 
 def main():

@@ -6,7 +6,7 @@ from PyQt4 import QtGui
 from ui.forms.confui import MainUI
 from src.conf import Connection
 from src.db import Database
-from src.mainquery import MainQueryBook
+from src.mainquerybook import MainQueryBook
 
 
 TEMPID = "-999"
@@ -173,7 +173,8 @@ class MainConf(MainUI):
         index = self.uiConnList.currentIndex()
         row = index.row()
         id, name, host, port, database, user, password = self.rowData(row)
-        database = Database(name=name,
+        database = Database(id=id,
+                            name=name,
                             host=host,
                             port=port,
                             database=database,

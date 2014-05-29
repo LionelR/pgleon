@@ -7,14 +7,34 @@ PGLeon.src.conf
 Gestion de la partie configuration de pgleon.
 """
 
+import os
+import sys
 from peewee import SqliteDatabase, Model, CharField, ForeignKeyField, BooleanField, TextField
-from PyQt4.QtGui import QDesktopServices
 
-d = QDesktopServices.storageLocation(QDesktopServices.DataLocation)
-print(d)
 
-#TODO : mettre la base dans le répertoire personnel de l'utilisateur
-conf_db = SqliteDatabase('pgleon.db')
+name = "PGLeon"
+version = "0.1"
+
+
+def title():
+    return "{0:s} - {1:s}".format(name, version)
+
+
+def localFolder():
+    if ('win' in sys.platform) and ('darwin' not in sys.platform):
+        import winpaths
+        lf = os.path.join(winpaths.get_local_appdata(), name)
+    else:
+        lf = os.path.join(os.path.expanduser('~'), u'.%s'%name.lower())
+    if not os.path.exists(lf):
+        os.makedirs(lf)
+        print("%s created"%lf)
+    return lf
+
+
+dbName = "pgleon.db"
+dbPath = os.path.join(localFolder(), dbName)
+confDB = SqliteDatabase(dbPath)
 
 
 class Connection(Model):
@@ -27,7 +47,7 @@ class Connection(Model):
     internal = BooleanField(default=False)
 
     class Meta:
-        database = conf_db
+        database = confDB
         # indexes = (
         #     # Index unique
         #     (('host', 'port', 'database', 'user'), True),
@@ -38,26 +58,36 @@ class Section(Model):
     connection = ForeignKeyField(Connection, related_name='sections')
     name = CharField(null=False)
 
+    class Meta:
+        database = confDB
+
 
 class Query(Model):
-    connection = ForeignKeyField(Connection, related_name='queries')
+    """Queries for one database connection"""
     section = ForeignKeyField(Section, related_name='queries')
     name = CharField(null=False)
     description = CharField()
     query = TextField(null=False)
-    internal = BooleanField(default=False)  # Requetes internes à pgleon, ne pas effacer ni afficher dans l'ui
-    deletable = BooleanField(
-        default=True)  # Requetes pouvant être effacées. Les requetes globales et internes seront à False
 
     class Meta:
-        database = conf_db
-        indexes = (
-            (('section', 'name'), True),
-        )
+        database = confDB
+
+
+class GlobalQuery(Model):
+    """Queries for all databases"""
+    name = CharField(null=False)
+    description = CharField()
+    query = TextField(null=False)
+
+    class Meta:
+        database = confDB
 
 
 Connection.create_table(True)
+Section.create_table(True)
 Query.create_table(True)
+GlobalQuery.create_table(True)
+
 
 
 def fixtures():
@@ -80,4 +110,10 @@ AND table_name !~ '^pg_';"""],
               """SELECT table_name
 FROM information_schema.views;"""]
     ]
+    if GlobalQuery.select().count() == 0:
+        for name, desc, query in qList:
+            sql = GlobalQuery(name=name, description=desc, query=query)
+            sql.save()
+
+fixtures()
 

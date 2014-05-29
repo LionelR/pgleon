@@ -37,10 +37,10 @@ class QueryPageUI(QtGui.QWidget):
 
 
 # class MainUI(QtGui.QWidget):
-class MainUI(QtGui.QMainWindow):
+class QueryBookUI(QtGui.QMainWindow):
 
     def __init__(self):
-        super(MainUI, self).__init__()
+        super(QueryBookUI, self).__init__()
         self.initUI()
 
     def initUI(self):

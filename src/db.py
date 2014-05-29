@@ -14,7 +14,8 @@ class DBError:
 
 
 class Database(object):
-    def __init__(self, name, host, port, database, user, password):
+    def __init__(self, id, name, host, port, database, user, password):
+        self.id = id # id of the connection pool
         self.name = name
         self.host = host
         self.port = port
