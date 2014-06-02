@@ -106,7 +106,7 @@ WHERE table_type = 'BASE TABLE';"""],
 FROM information_schema.views
 WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
 AND table_name !~ '^pg_';"""],
-             ["ALl views list", "List all views, including system views",
+             ["All views list", "List all views, including system views",
               """SELECT table_name
 FROM information_schema.views;"""]
     ]

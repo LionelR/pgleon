@@ -6,7 +6,7 @@ import sys
 __author__ = 'lionel'
 
 from src import db
-from src.mainbookmarks import ShowBookMarks
+from src.mainbookmarks import ShowBookMarks, EditBookMarks, SaveBookMarks
 from ui.forms.querybookui import QueryBookUI, QueryPageUI
 from ui.widgets.qtable import QTableModel
 
@@ -84,6 +84,14 @@ class MainQueryBook(QueryBookUI):
         self.uiQueryBook.removeTab(index)
         del page
 
+    def onSaveBookMarks(self):
+        page = self.uiQueryBook.currentWidget()
+        connection = page.currentConnection()
+        query = page.uiQueryEditor.text()
+        dlg = SaveBookMarks(connection=connection, query=query)
+        dlg.exec_()
+
+
     def setToolBar(self):
         uiNewAction = QtGui.QAction(QtGui.QIcon('icons/plus.png'), '&New', self)
         uiNewAction.setShortcut('Ctrl+N')
@@ -109,12 +117,18 @@ class MainQueryBook(QueryBookUI):
         uiAnalyseAction.triggered.connect(self.analyseQuery)
         self.uiToolBar.addAction(uiAnalyseAction)
 
-        uiShowBookMarksAction = QtGui.QAction(QtGui.QIcon('icons/bookmarks.png'), '&Bookmarks', self)
-        uiShowBookMarksAction.setShortcut('Ctrl+B')
-        uiShowBookMarksAction.setStatusTip('Show all bookmarks')
-        uiShowBookMarksAction.setMenu(ShowBookMarks(database=self.database, parent=self))
-        self.uiToolBar.addAction(uiShowBookMarksAction)
+        uiSaveBookMarksAction = QtGui.QAction(QtGui.QIcon('icons/star.png'), '&Save', self)
+        uiSaveBookMarksAction.setShortcut('Ctrl+D')
+        uiSaveBookMarksAction.setStatusTip('Save as bookmark')
+        uiSaveBookMarksAction.triggered.connect(self.onSaveBookMarks)
+        self.uiToolBar.addAction(uiSaveBookMarksAction)
 
+        uiShowBookMarksButton = QtGui.QToolButton()
+        uiShowBookMarksButton.setIcon(QtGui.QIcon('icons/bookmarks.png'))
+        uiShowBookMarksButton.setStatusTip('Show all bookmarks')
+        uiShowBookMarksButton.setPopupMode(QtGui.QToolButton.InstantPopup)
+        uiShowBookMarksButton.setMenu(ShowBookMarks(database=self.database, parent=self))
+        self.uiToolBar.addWidget(uiShowBookMarksButton)
 
 def main():
     app = QtGui.QApplication(sys.argv)
