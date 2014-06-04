@@ -14,19 +14,14 @@ GLOBALID = "-999"
 
 class SaveBookMarks(SaveBookMarksUI):
     def __init__(self, *args, **kwargs):
-        self.connection = kwargs.pop('connection')
+        self.database = kwargs.pop('database')
         self.query = kwargs.pop('query')
         super(SaveBookMarks, self).__init__(*args, **kwargs)
         self.setWindowTitle("Save Bookmark")
 
         #Models
-        self.sectionModel = self.setupSectionModel()
-        self.uiSectionOldCombo.setModel(self.sectionModel)
-        self.uiSectionOldCombo.setModelColumn(2)
-        self.queryModel = self.setupQueryModel()
-        self.uiNameOldCombo.setModel(self.queryModel)
-        self.uiNameOldCombo.setModelColumn(2)
-        self.queryMapper = self.setupQueryMapper(self.queryModel)
+        self.setupSectionModel()
+        self.setupQueryModel()
 
         #Signals
         self.uiNameOldCombo.currentIndexChanged[int].connect(self.onItemNameChanged)
@@ -34,6 +29,8 @@ class SaveBookMarks(SaveBookMarksUI):
         self.uiSectionNewRadionBtn.toggled.connect(self.onSectionToggle)
         self.uiNameOldRadioBtn.toggled.connect(self.onNameToggle)
         self.uiNameNewRadioBtn.toggled.connect(self.onNameToggle)
+        self.uiSaveBtn.clicked.connect(self.onSave)
+        self.uiCancelBtn.clicked.connect(self.reject)
 
         #Defaults states
         self.uiSectionOldRadionBtn.setChecked(True)
@@ -50,40 +47,49 @@ class SaveBookMarks(SaveBookMarksUI):
             model.setItem(0, column, rowValuesList[column])
 
         #then we add the specific sections for this connection
-        for row, section in enumerate(Section.select()):
+        for row, section in enumerate(Section.select().where(Section.connection == self.database.id)):
             id = QtGui.QStandardItem(str(section.id))
-            connection_id = QtGui.QStandardItem(section.connection)
+            connection_id = QtGui.QStandardItem(section.connection.id)
             name = QtGui.QStandardItem(section.name)
             rowValuesList = [id, connection_id, name]
             for column in range(len(rowValuesList)):
                 model.setItem(row + 1, column, rowValuesList[column])
-        return model
+        self.sectionModel = model
+        self.uiSectionOldCombo.setModel(self.sectionModel)
+        self.uiSectionOldCombo.setModelColumn(2)
 
     def setupQueryModel(self):
         model = QtGui.QStandardItemModel(0, 5, self)
+        row = self.uiSectionOldCombo.currentIndex()
+        section_id = self.sectionModel.item(row, 1).text()
         ngrows = 0
         #Globals queries
-        for row, gquery in enumerate(GlobalQuery.select()):
-            id = QtGui.QStandardItem(str(gquery.id))
-            section_id = QtGui.QStandardItem(GLOBALID)
-            name = QtGui.QStandardItem(gquery.name)
-            description = QtGui.QStandardItem(gquery.description)
-            query = QtGui.QStandardItem(gquery.query)
-            rowValuesList = [id, section_id, name, description, query]
-            for column in range(len(rowValuesList)):
-                model.setItem(row, column, rowValuesList[column])
-            ngrows += 1
+        if section_id == GLOBALID:
+            for row, gquery in enumerate(GlobalQuery.select()):
+                id = QtGui.QStandardItem(str(gquery.id))
+                section = QtGui.QStandardItem(GLOBALID)
+                name = QtGui.QStandardItem(gquery.name)
+                description = QtGui.QStandardItem(gquery.description)
+                query = QtGui.QStandardItem(gquery.query)
+                rowValuesList = [id, section, name, description, query]
+                for column in range(len(rowValuesList)):
+                    model.setItem(row, column, rowValuesList[column])
+                ngrows += 1
         #Specific sections queries
-        for row, squery in enumerate(Query.select()):
-            id = QtGui.QStandardItem(str(squery.id))
-            section_id = QtGui.QStandardItem(squery.section)
-            name = QtGui.QStandardItem(squery.name)
-            description = QtGui.QStandardItem(squery.description)
-            query = QtGui.QStandardItem(squery.query)
-            rowValuesList = [id, section_id, name, description, query]
-            for column in range(len(rowValuesList)):
-                model.setItem(row+ngrows, column, rowValuesList[column])
-        return model
+        else:
+            for row, squery in enumerate(Query.select().where(Query.section == section_id)):
+                id = QtGui.QStandardItem(str(squery.id))
+                section = QtGui.QStandardItem(squery.section)  #the same we set previously? yes!
+                name = QtGui.QStandardItem(squery.name)
+                description = QtGui.QStandardItem(squery.description)
+                query = QtGui.QStandardItem(squery.query)
+                rowValuesList = [id, section, name, description, query]
+                for column in range(len(rowValuesList)):
+                    model.setItem(row + ngrows, column, rowValuesList[column])
+        self.queryModel = model
+        self.uiNameOldCombo.setModel(self.queryModel)
+        self.uiNameOldCombo.setModelColumn(2)
+        self.queryMapper = self.setupQueryMapper(self.queryModel)
 
     def setupQueryMapper(self, model):
         mapper = QtGui.QDataWidgetMapper(self)
@@ -101,10 +107,80 @@ class SaveBookMarks(SaveBookMarksUI):
         isOld = self.uiNameOldRadioBtn.isChecked()
         self.uiNameOldCombo.setEnabled(isOld)
         self.uiNameNewText.setEnabled(not isOld)
+        if isOld:
+            index = self.uiNameOldCombo.currentIndex()
+            self.onItemNameChanged(index)
+        else:
+            self.uiNameNewText.clear()
+
+    def onItemSectionChanged(self, index):
+        """When the user select/change a item in the Section combo"""
+        #Update of the query model based on the selected Section
+        self.setupQueryModel()
 
     def onItemNameChanged(self, index):
-        """When the user select/change a item in the left list of connections"""
+        """When the user select/change a item in the Name combo"""
         self.queryMapper.setCurrentIndex(index)
+
+    def onSave(self):
+        #Some tests
+        if self.uiSectionNewRadionBtn.isChecked() and self.uiSectionNewText.text().isEmpty():
+            self.uiWarningLabel.setText("<font color='red'>Enter a section title</font>")
+            return
+        if self.uiNameNewRadioBtn.isChecked() and self.uiNameNewText.text().isEmpty():
+            self.uiWarningLabel.setText("<font color='red'>Enter a query name</font>")
+            return
+
+        #First looking at the section part
+        if self.uiSectionOldRadionBtn.isChecked():
+            #We use a existing section
+            row = self.uiSectionOldCombo.currentIndex()
+            section_id = self.sectionModel.item(row, 1).text()
+        else:
+            #We need to create a new section first
+            section_name = self.uiSectionNewText.text()
+            section = Section(connection=self.database.id, name=section_name)
+            section.save()
+            section_id = section.id
+
+        #Secondly, processing the query part
+        if self.uiNameOldRadioBtn.isChecked():
+            #We're going to update a existing query
+            row = self.uiNameOldCombo.currentIndex()
+            query_id = self.queryModel.item(row, 0)
+            description = self.uiDescriptionText.text()
+            name = self.uiNameOldCombo.currentText()
+            if section_id == GLOBALID:
+                #Update a global query
+                query = GlobalQuery.update(name=name,
+                                           description=description,
+                                           query=self.query).where(GlobalQuery.id == query_id)
+                query.execute()
+            else:
+                #Update a section specific query
+                query = Query.update(name=name,
+                                     section=section_id,
+                                     description=description,
+                                     query=self.query).where(GlobalQuery.id == query_id)
+                query.execute()
+        else:
+            #We create a new query
+            description = self.uiDescriptionText.text()
+            name = self.uiNameNewText.text()
+            if section_id == GLOBALID:
+                #Create a global query
+                query = GlobalQuery(name=name,
+                                    description=description,
+                                    query=self.query)
+                query.save()
+            else:
+                #Create a section specific query
+                query = Query(name=name,
+                              section=section_id,
+                              description=description,
+                              query=self.query)
+                query.save()
+        self.accept()
 
 
 class EditBookMarks(EditBookMarksUI):

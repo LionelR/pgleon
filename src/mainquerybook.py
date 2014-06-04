@@ -86,9 +86,8 @@ class MainQueryBook(QueryBookUI):
 
     def onSaveBookMarks(self):
         page = self.uiQueryBook.currentWidget()
-        connection = page.currentConnection()
         query = page.uiQueryEditor.text()
-        dlg = SaveBookMarks(connection=connection, query=query)
+        dlg = SaveBookMarks(database=self.database, query=query)
         dlg.exec_()
 
 

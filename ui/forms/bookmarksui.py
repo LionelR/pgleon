@@ -41,21 +41,30 @@ class SaveBookMarksUI(QtGui.QDialog):
         groupBox2.setLayout(gridBox2)
 
         #Description
-        self.uiDescriptionText = QtGui.QTextEdit()
+        self.uiDescriptionText = QtGui.QLineEdit()
         hBox1 = QtGui.QHBoxLayout()
         hBox1.addWidget(self.uiDescriptionText)
         groupBox3 = QtGui.QGroupBox("Description")
         groupBox3.setLayout(hBox1)
 
-        buttonBox = QtGui.QDialogButtonBox(QtGui.QDialogButtonBox.Ok | QtGui.QDialogButtonBox.Cancel)
+        #Warnings
+        self.uiWarningLabel = QtGui.QLabel()
+
+        self.uiSaveBtn = QtGui.QPushButton("Save")
+        self.uiCancelBtn = QtGui.QPushButton("Cancel")
+        buttonBox = QtGui.QHBoxLayout()
+        buttonBox.addStretch(1)
+        buttonBox.addWidget(self.uiSaveBtn)
+        buttonBox.addWidget(self.uiCancelBtn)
 
         #Final step
         vBox1 = QtGui.QVBoxLayout()
         vBox1.addWidget(groupBox1)
         vBox1.addWidget(groupBox2)
         vBox1.addWidget(groupBox3)
+        vBox1.addWidget(self.uiWarningLabel)
         vBox1.addStretch(1)
-        vBox1.addWidget(buttonBox)
+        vBox1.addLayout(buttonBox)
 
         self.setLayout(vBox1)
 

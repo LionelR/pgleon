@@ -34,6 +34,7 @@ def localFolder():
 
 dbName = "pgleon.db"
 dbPath = os.path.join(localFolder(), dbName)
+# os.remove(dbPath)
 confDB = SqliteDatabase(dbPath)
 
 
@@ -44,14 +45,9 @@ class Connection(Model):
     user = CharField(null=True)
     password = CharField(null=True)
     name = CharField(null=False)
-    internal = BooleanField(default=False)
 
     class Meta:
         database = confDB
-        # indexes = (
-        #     # Index unique
-        #     (('host', 'port', 'database', 'user'), True),
-        # )
 
 
 class Section(Model):
