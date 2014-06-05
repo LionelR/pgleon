@@ -18,6 +18,7 @@ class SaveBookMarks(SaveBookMarksUI):
         self.query = kwargs.pop('query')
         super(SaveBookMarks, self).__init__(*args, **kwargs)
         self.setWindowTitle("Save Bookmark")
+        self.name = ""
 
         #Models
         self.setupSectionModel()
@@ -25,6 +26,7 @@ class SaveBookMarks(SaveBookMarksUI):
 
         #Signals
         self.uiNameOldCombo.currentIndexChanged[int].connect(self.onItemNameChanged)
+        self.uiSectionOldCombo.currentIndexChanged[int].connect(self.onItemSectionChanged)
         self.uiSectionOldRadionBtn.toggled.connect(self.onSectionToggle)
         self.uiSectionNewRadionBtn.toggled.connect(self.onSectionToggle)
         self.uiNameOldRadioBtn.toggled.connect(self.onNameToggle)
@@ -61,7 +63,8 @@ class SaveBookMarks(SaveBookMarksUI):
     def setupQueryModel(self):
         model = QtGui.QStandardItemModel(0, 5, self)
         row = self.uiSectionOldCombo.currentIndex()
-        section_id = self.sectionModel.item(row, 1).text()
+        section_id = self.sectionModel.item(row, 0).text()
+        print(section_id)
         ngrows = 0
         #Globals queries
         if section_id == GLOBALID:
@@ -79,7 +82,7 @@ class SaveBookMarks(SaveBookMarksUI):
         else:
             for row, squery in enumerate(Query.select().where(Query.section == section_id)):
                 id = QtGui.QStandardItem(str(squery.id))
-                section = QtGui.QStandardItem(squery.section)  #the same we set previously? yes!
+                section = QtGui.QStandardItem(squery.section.id)  #the same we set previously? yes!
                 name = QtGui.QStandardItem(squery.name)
                 description = QtGui.QStandardItem(squery.description)
                 query = QtGui.QStandardItem(squery.query)
@@ -112,6 +115,7 @@ class SaveBookMarks(SaveBookMarksUI):
             self.onItemNameChanged(index)
         else:
             self.uiNameNewText.clear()
+            self.uiDescriptionText.clear()
 
     def onItemSectionChanged(self, index):
         """When the user select/change a item in the Section combo"""
@@ -135,7 +139,7 @@ class SaveBookMarks(SaveBookMarksUI):
         if self.uiSectionOldRadionBtn.isChecked():
             #We use a existing section
             row = self.uiSectionOldCombo.currentIndex()
-            section_id = self.sectionModel.item(row, 1).text()
+            section_id = self.sectionModel.item(row, 0).text()
         else:
             #We need to create a new section first
             section_name = self.uiSectionNewText.text()
@@ -147,7 +151,7 @@ class SaveBookMarks(SaveBookMarksUI):
         if self.uiNameOldRadioBtn.isChecked():
             #We're going to update a existing query
             row = self.uiNameOldCombo.currentIndex()
-            query_id = self.queryModel.item(row, 0)
+            query_id = self.queryModel.item(row, 0).text()
             description = self.uiDescriptionText.text()
             name = self.uiNameOldCombo.currentText()
             if section_id == GLOBALID:
@@ -156,6 +160,7 @@ class SaveBookMarks(SaveBookMarksUI):
                                            description=description,
                                            query=self.query).where(GlobalQuery.id == query_id)
                 query.execute()
+                print("UPDATE GLOBAL")
             else:
                 #Update a section specific query
                 query = Query.update(name=name,
@@ -163,6 +168,8 @@ class SaveBookMarks(SaveBookMarksUI):
                                      description=description,
                                      query=self.query).where(GlobalQuery.id == query_id)
                 query.execute()
+                print("UPDATE LOCALE")
+            self.name = name
         else:
             #We create a new query
             description = self.uiDescriptionText.text()
@@ -173,6 +180,7 @@ class SaveBookMarks(SaveBookMarksUI):
                                     description=description,
                                     query=self.query)
                 query.save()
+                print("CREATE GLOBALE")
             else:
                 #Create a section specific query
                 query = Query(name=name,
@@ -180,7 +188,12 @@ class SaveBookMarks(SaveBookMarksUI):
                               description=description,
                               query=self.query)
                 query.save()
+                print("CREATE LOCALE")
+            self.name = name
         self.accept()
+
+    def getName(self):
+        return self.name
 
 
 class EditBookMarks(EditBookMarksUI):
@@ -201,7 +214,7 @@ class ShowBookMarks(QtGui.QMenu):
         for globalQuery in GlobalQuery.select():
             action = QtGui.QAction(QtCore.QString.fromUtf8(globalQuery.name), self)
             action.setStatusTip(globalQuery.description)
-            action.triggered.connect(partial(self.addPage, globalQuery.query))
+            action.triggered.connect(partial(self.addPage, globalQuery.query, globalQuery.name))
             globalMenu.addAction(action)
         self.addSeparator()
 
@@ -211,10 +224,11 @@ class ShowBookMarks(QtGui.QMenu):
             for query in Query.select().where(Query.section == section.id):
                 action = QtGui.QAction(QtCore.QString.fromUtf8(query.name), self)
                 action.setStatusTip(query.description)
-                action.triggered.connect(partial(self.addPage, query.query))
+                action.triggered.connect(partial(self.addPage, query.query, query.name))
                 sectionMenu.addAction(action)
 
 
-    def addPage(self, query):
+    def addPage(self, query, name):
         page = self.parent.newQueryPage()
         page.uiQueryEditor.setText(query)
+        self.parent.setPageTitle(name)

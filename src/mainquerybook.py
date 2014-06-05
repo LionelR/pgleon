@@ -73,6 +73,10 @@ class MainQueryBook(QueryBookUI):
         self.uiQueryBook.setCurrentWidget(page)
         return page
 
+    def setPageTitle(self, title):
+        index = self.uiQueryBook.currentIndex()
+        self.uiQueryBook.setTabText(index, title)
+
     def _pageCount(self):
         """A page counter"""
         self.pageCount += 1
@@ -88,8 +92,11 @@ class MainQueryBook(QueryBookUI):
         page = self.uiQueryBook.currentWidget()
         query = page.uiQueryEditor.text()
         dlg = SaveBookMarks(database=self.database, query=query)
-        dlg.exec_()
-
+        result= dlg.exec_()
+        if result == QtGui.QDialog.Accepted:
+            self.updateShowBookMarksButton()
+            name = dlg.getName()
+            self.setPageTitle(name)
 
     def setToolBar(self):
         uiNewAction = QtGui.QAction(QtGui.QIcon('icons/plus.png'), '&New', self)
@@ -126,8 +133,13 @@ class MainQueryBook(QueryBookUI):
         uiShowBookMarksButton.setIcon(QtGui.QIcon('icons/bookmarks.png'))
         uiShowBookMarksButton.setStatusTip('Show all bookmarks')
         uiShowBookMarksButton.setPopupMode(QtGui.QToolButton.InstantPopup)
-        uiShowBookMarksButton.setMenu(ShowBookMarks(database=self.database, parent=self))
         self.uiToolBar.addWidget(uiShowBookMarksButton)
+        self.uiShowBookMarksButton = uiShowBookMarksButton
+        self.updateShowBookMarksButton()
+
+    def updateShowBookMarksButton(self):
+        self.uiShowBookMarksButton.setMenu(ShowBookMarks(database=self.database, parent=self))
+
 
 def main():
     app = QtGui.QApplication(sys.argv)
