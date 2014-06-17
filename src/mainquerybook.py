@@ -11,50 +11,88 @@ from ui.forms.querybookui import QueryBookUI, QueryPageUI
 from ui.widgets.qtable import QTableModel
 
 
+class GenericThread(QtCore.QThread):
+    def __init__(self, function, *args, **kwargs):
+        QtCore.QThread.__init__(self)
+        self.function = function
+        self.args = args
+        self.kwargs = kwargs
+
+    def __del__(self):
+        self.wait()
+
+    def run(self):
+        self.function(*self.args, **self.kwargs)
+        return
+
+
 class QueryPage(QueryPageUI):
+
+    resultSignal = QtCore.pyqtSignal([object, object, object])
+
     def __init__(self, *args, **kwargs):
         self.connection = kwargs.pop("connection")
+        self.parent = kwargs.pop("parent")
+        self.name = ""
+        self.queryThread = None
         super(QueryPage, self).__init__(*args, **kwargs)
+        fontSize = self.uiQueryResult.verticalHeader().font().pointSize()
+        self.uiQueryResult.verticalHeader().setDefaultSectionSize(fontSize+2*3)
 
     def currentConnection(self):
         return self.connection
 
+    def currentName(self):
+        return self.name
 
-class MainQueryBook(QueryBookUI):
-    def __init__(self, database):
-        super(MainQueryBook, self).__init__()
-        self.database = database
-        self.uiSetTitle(self.database.name)
-        self.setToolBar()
-
-        self.uiQueryBook.setTabsClosable(True)
-        self.uiQueryBook.setMovable(True)
-        self.uiQueryBook.setTabShape(QtGui.QTabWidget.Rounded)
-        self.pageCount = 0
-        self.newQueryPage()
-
-        #Signals
-        self.uiQueryBook.tabCloseRequested.connect(self.onClosePage)
+    def setCurrentName(self, name):
+        self.name = name
+        index = self.parent.indexOf(self)
+        self.parent.setPageTitle(index, name)
 
     def execute(self, prefix=""):
-        page = self.uiQueryBook.currentWidget()
-        connection = page.currentConnection()
-        query = unicode(page.uiQueryEditor.text())
+        query = unicode(self.uiQueryEditor.text())
         if query.strip() == "":
             return
         query = prefix + unicode(query)
 
-        headers, res, status = db.execute(connection, query)
+        # Run the query in a thread
+        self.queryThread = GenericThread(self._execute, query)
+        # self.resultSignal.disconnect(self._setResult)
+        self.resultSignal.connect(self._setResult)
+        self.queryThread.start()
+
+    def _execute(self, query):
+        """Internal function to be called by the execute function in a thread.
+        The results will be passed to the _setResult function"""
+        self._preProcessing() #The thread is started
+        headers, res, status = db.execute(self.connection, query)
+        self.resultSignal.emit(headers, res, status)
+
+
+    def _preProcessing(self):
+        """Preprocessing operations before running query"""
+        #Change the states of the buttons, based on the onChangePage function
+        index = self.parent.indexOf(self)
+        self.parent.onChangePage(index)
+
+    def _postProcessing(self):
+        """Apply operations after running query"""
+        index = self.parent.indexOf(self)
+        self.parent.onChangePage(index)
+
+    def _setResult(self, headers, res, status):
         if isinstance(res, db.DBError):
-            page.uiQueryMsg.setPlainText(QtCore.QString.fromUtf8(res.get_msg()))
-            page.uiTab.setCurrentWidget(page.uiQueryMsg)
+            self.uiQueryMsg.setPlainText(QtCore.QString.fromUtf8(res.get_msg()))
+            self.uiTab.setCurrentWidget(self.uiQueryMsg)
         else:
             tm = QTableModel(res, headers, self)
-            page.uiQueryResult.setModel(tm)
-            page.uiQueryResult.resizeColumnsToContents()
-            page.uiQueryResult.resizeRowsToContents()
-            page.uiTab.setCurrentWidget(page.uiQueryResult)
-            page.setStatus(status)
+            self.uiQueryResult.setModel(tm)
+            # self.uiQueryResult.resizeColumnsToContents()
+            # self.uiQueryResult.resizeRowsToContents() #Very slow
+            self.uiTab.setCurrentWidget(self.uiQueryResult)
+            self.setStatus(status)
+        self._postProcessing()
 
     def runQuery(self):
         self.execute()
@@ -65,17 +103,59 @@ class MainQueryBook(QueryBookUI):
     def analyseQuery(self):
         self.execute(prefix=u"EXPLAIN ANALYSE ")
 
+    def cancelQuery(self):
+        print("Canceling query")
+        self.connection.cancel()
+        print("Query canceled")
+
+
+class MainQueryBook(QueryBookUI):
+    def __init__(self, database):
+        super(MainQueryBook, self).__init__()
+        self.database = database
+        self.setWindowTitle(self.database.name)
+        self.setToolBar()
+
+        self.uiQueryBook.setTabsClosable(True)
+        self.uiQueryBook.setMovable(True)
+        self.uiQueryBook.setTabShape(QtGui.QTabWidget.Rounded)
+        self.uiQueryBook.setElideMode(1)
+        self.pageCount = 0
+        self.newQueryPage()
+
+        #Signals
+        self.uiQueryBook.tabCloseRequested.connect(self.onClosePage)
+        self.uiQueryBook.currentChanged.connect(self.onChangePage)
+
+    def runQuery(self):
+        page = self.uiQueryBook.currentWidget()
+        page.runQuery()
+
+    def explainQuery(self):
+        page = self.uiQueryBook.currentWidget()
+        page.explainQuery()
+
+    def analyseQuery(self):
+        page = self.uiQueryBook.currentWidget()
+        page.analyseQuery()
+
+    def onStopQuery(self):
+        page = self.uiQueryBook.currentWidget()
+        page.cancelQuery()
+
     def newQueryPage(self):
         """Add a new query page to the book"""
-        name = "Query_%i"%self._pageCount()
-        page = QueryPage(connection=self.database.newConnection())
+        name = "Query_%i" % self._pageCount()
+        page = QueryPage(connection=self.database.newConnection(), parent=self)
         self.uiQueryBook.addTab(page, name)
         self.uiQueryBook.setCurrentWidget(page)
         return page
 
-    def setPageTitle(self, title):
-        index = self.uiQueryBook.currentIndex()
+    def setPageTitle(self, index, title):
         self.uiQueryBook.setTabText(index, title)
+
+    def indexOf(self, page):
+        return self.uiQueryBook.indexOf(page)
 
     def _pageCount(self):
         """A page counter"""
@@ -88,40 +168,63 @@ class MainQueryBook(QueryBookUI):
         self.uiQueryBook.removeTab(index)
         del page
 
+    def onChangePage(self, index):
+        page = self.uiQueryBook.widget(index)
+        if page.queryThread is not None:
+            running = page.queryThread.isRunning()
+            self.uiRunAction.setEnabled(not running)
+            self.uiExplainAction.setEnabled(not running)
+            self.uiAnalyseAction.setEnabled(not running)
+        else:
+            self.uiRunAction.setEnabled(True)
+            self.uiExplainAction.setEnabled(True)
+            self.uiAnalyseAction.setEnabled(True)
+
     def onSaveBookMarks(self):
         page = self.uiQueryBook.currentWidget()
         query = page.uiQueryEditor.text()
         dlg = SaveBookMarks(database=self.database, query=query)
-        result= dlg.exec_()
+        result = dlg.exec_()
         if result == QtGui.QDialog.Accepted:
             self.updateShowBookMarksButton()
             name = dlg.getName()
-            self.setPageTitle(name)
+            index = self.uiQueryBook.currentIndex()
+            self.setPageTitle(index, name)
 
     def setToolBar(self):
-        uiNewAction = QtGui.QAction(QtGui.QIcon('icons/plus.png'), '&New', self)
-        uiNewAction.setShortcut('Ctrl+N')
-        uiNewAction.setStatusTip('New query')
-        uiNewAction.triggered.connect(self.newQueryPage)
-        self.uiToolBar.addAction(uiNewAction)
+        self.uiNewAction = QtGui.QAction(QtGui.QIcon('icons/plus.png'), '&New', self)
+        self.uiNewAction.setShortcut('Ctrl+N')
+        self.uiNewAction.setStatusTip('New query')
+        self.uiNewAction.triggered.connect(self.newQueryPage)
+        self.uiToolBar.addAction(self.uiNewAction)
 
-        uiRunAction = QtGui.QAction(QtGui.QIcon('icons/run.png'), '&Run', self)
-        uiRunAction.setShortcut('Ctrl+R')
-        uiRunAction.setStatusTip('Run query')
-        uiRunAction.triggered.connect(self.runQuery)
-        self.uiToolBar.addAction(uiRunAction)
+        self.uiToolBar.addSeparator()
 
-        uiExplainAction = QtGui.QAction(QtGui.QIcon('icons/explain.png'), '&Explain', self)
-        uiExplainAction.setShortcut('Ctrl+E')
-        uiExplainAction.setStatusTip('Explain query')
-        uiExplainAction.triggered.connect(self.explainQuery)
-        self.uiToolBar.addAction(uiExplainAction)
+        self.uiRunAction = QtGui.QAction(QtGui.QIcon('icons/run.png'), '&Run', self)
+        self.uiRunAction.setShortcut('Ctrl+R')
+        self.uiRunAction.setStatusTip('Run query')
+        self.uiRunAction.triggered.connect(self.runQuery)
+        self.uiToolBar.addAction(self.uiRunAction)
 
-        uiAnalyseAction = QtGui.QAction(QtGui.QIcon('icons/analyse.png'), '&Analyse', self)
+        self.uiStopAction = QtGui.QAction(QtGui.QIcon('icons/stop.png'), '&Stop', self)
+        self.uiStopAction.setShortcut('Ctrl+Q')
+        self.uiStopAction.setStatusTip('Stop the current query')
+        self.uiStopAction.triggered.connect(self.onStopQuery)
+        self.uiToolBar.addAction(self.uiStopAction)
+
+        self.uiExplainAction = QtGui.QAction(QtGui.QIcon('icons/explain.png'), '&Explain', self)
+        self.uiExplainAction.setShortcut('Ctrl+E')
+        self.uiExplainAction.setStatusTip('Explain query')
+        self.uiExplainAction.triggered.connect(self.explainQuery)
+        self.uiToolBar.addAction(self.uiExplainAction)
+
+        self.uiAnalyseAction = QtGui.QAction(QtGui.QIcon('icons/analyse.png'), '&Analyse', self)
         # uiAnalyseAction.setShortcut('Ctrl+A')
-        uiAnalyseAction.setStatusTip('Analyse query')
-        uiAnalyseAction.triggered.connect(self.analyseQuery)
-        self.uiToolBar.addAction(uiAnalyseAction)
+        self.uiAnalyseAction.setStatusTip('Analyse query')
+        self.uiAnalyseAction.triggered.connect(self.analyseQuery)
+        self.uiToolBar.addAction(self.uiAnalyseAction)
+
+        self.uiToolBar.addSeparator()
 
         uiSaveBookMarksAction = QtGui.QAction(QtGui.QIcon('icons/star.png'), '&Save', self)
         uiSaveBookMarksAction.setShortcut('Ctrl+D')

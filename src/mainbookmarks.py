@@ -231,4 +231,4 @@ class ShowBookMarks(QtGui.QMenu):
     def addPage(self, query, name):
         page = self.parent.newQueryPage()
         page.uiQueryEditor.setText(query)
-        self.parent.setPageTitle(name)
+        page.setCurrentName(name)

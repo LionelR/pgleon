@@ -67,9 +67,6 @@ class QueryBookUI(QtGui.QMainWindow):
     #     uiFileMenu = self.uiMenuBar.addMenu('&File')
     #     uiFileMenu.addAction(uiExitAction)
 
-    def uiSetTitle(self, title):
-        self.setWindowTitle(title)
-
     # def closeEvent(self, event):
     #     pass
         # settings = QtCore.QSettings("MyCompany", "MyApp")
