@@ -1,10 +1,9 @@
 #-*- coding:utf-8 -*-
 
-__author__ = 'lionel'
-
 from PyQt4 import QtGui, QtCore
-
 from ui.widgets.qscint import QScint
+
+__author__ = 'lionel'
 
 
 class QueryPageUI(QtGui.QWidget):
@@ -47,7 +46,8 @@ class QueryBookUI(QtGui.QMainWindow):
         self.uiMenuBar = self.menuBar()
         # self.initMenu()
 
-        self.uiToolBar = self.addToolBar('Execute')
+        self.uiToolBar = self.addToolBar('Main Toolbar')
+        self.uiToolBar.setObjectName('Main Toolbar')
 
         self.uiQueryBook = QtGui.QTabWidget()
         self.setCentralWidget(self.uiQueryBook)
@@ -67,11 +67,6 @@ class QueryBookUI(QtGui.QMainWindow):
     #     uiFileMenu = self.uiMenuBar.addMenu('&File')
     #     uiFileMenu.addAction(uiExitAction)
 
-    # def closeEvent(self, event):
-    #     pass
-        # settings = QtCore.QSettings("MyCompany", "MyApp")
-        # settings.setValue("geometry", self.saveGeometry())
-        # settings.setValue("windowState", self.saveState())
-        # self.closeEvent(event)
+
 
 

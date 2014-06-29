@@ -11,19 +11,22 @@ from PyQt4.QtCore import *
 
 
 class QTableModel(QAbstractTableModel):
-    def __init__(self, datain, headerdata, parent=None, *args):
-        """ datain: a list of lists
-            headerdata: a list of strings
+    def __init__(self, res, headers, parent=None, *args):
+        """ res: a list of lists
+            headers: a list of strings
         """
         QAbstractTableModel.__init__(self, parent, *args)
-        self.arraydata = datain
-        self.headerdata = headerdata
+        self.arraydata = res
+        self.headers = headers
 
     def rowCount(self, parent):
         return len(self.arraydata)
 
     def columnCount(self, parent):
-        return len(self.arraydata[0])
+        # if not self.arraydata:
+        #     return 0
+        # return len(self.arraydata[0])
+        return len(self.headers)
 
     def data(self, index, role):
         if not index.isValid():
@@ -34,7 +37,7 @@ class QTableModel(QAbstractTableModel):
 
     def headerData(self, col, orientation, role):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            return QVariant(self.headerdata[col])
+            return QVariant(self.headers[col])
         return QVariant()
 
     def sort(self, Ncol, order):

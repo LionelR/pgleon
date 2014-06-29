@@ -6,9 +6,11 @@ import sys
 __author__ = 'lionel'
 
 from src import db
-from src.mainbookmarks import ShowBookMarks, EditBookMarks, SaveBookMarks
+from src.mainbookmarks import ShowBookMarks, SaveBookMarks
 from ui.forms.querybookui import QueryBookUI, QueryPageUI
 from ui.widgets.qtable import QTableModel
+from src.mainexplorer import MainExplorer
+import sqlparse
 
 
 class GenericThread(QtCore.QThread):
@@ -27,7 +29,6 @@ class GenericThread(QtCore.QThread):
 
 
 class QueryPage(QueryPageUI):
-
     resultSignal = QtCore.pyqtSignal([object, object, object])
 
     def __init__(self, *args, **kwargs):
@@ -37,7 +38,7 @@ class QueryPage(QueryPageUI):
         self.queryThread = None
         super(QueryPage, self).__init__(*args, **kwargs)
         fontSize = self.uiQueryResult.verticalHeader().font().pointSize()
-        self.uiQueryResult.verticalHeader().setDefaultSectionSize(fontSize+2*3)
+        self.uiQueryResult.verticalHeader().setDefaultSectionSize(fontSize + 2 * 3)
 
     def currentConnection(self):
         return self.connection
@@ -65,7 +66,7 @@ class QueryPage(QueryPageUI):
     def _execute(self, query):
         """Internal function to be called by the execute function in a thread.
         The results will be passed to the _setResult function"""
-        self._preProcessing() #The thread is started
+        self._preProcessing()  #The thread is started
         headers, res, status = db.execute(self.connection, query)
         self.resultSignal.emit(headers, res, status)
 
@@ -114,7 +115,7 @@ class MainQueryBook(QueryBookUI):
         super(MainQueryBook, self).__init__()
         self.database = database
         self.setWindowTitle(self.database.name)
-        self.setToolBar()
+        self.setupToolBar()
 
         self.uiQueryBook.setTabsClosable(True)
         self.uiQueryBook.setMovable(True)
@@ -123,9 +124,20 @@ class MainQueryBook(QueryBookUI):
         self.pageCount = 0
         self.newQueryPage()
 
+        #ExplorerTree
+        self.setupExplorerTree()
+
         #Signals
         self.uiQueryBook.tabCloseRequested.connect(self.onClosePage)
         self.uiQueryBook.currentChanged.connect(self.onChangePage)
+
+        #Window position and size
+        self.settings = QtCore.QSettings(QtCore.QSettings.IniFormat, QtCore.QSettings.UserScope,
+                                         'pgleon', 'pgleon', parent=self)
+        self.settings.setFallbacksEnabled(False)  # File only, no fallback to registry or or.
+        self.restoreGeometry(self.settings.value("geometry").toByteArray())
+        self.restoreState(self.settings.value("windowState").toByteArray())
+
 
     def runQuery(self):
         page = self.uiQueryBook.currentWidget()
@@ -191,7 +203,17 @@ class MainQueryBook(QueryBookUI):
             index = self.uiQueryBook.currentIndex()
             self.setPageTitle(index, name)
 
-    def setToolBar(self):
+    def onRewriteQuery(self):
+        page = self.uiQueryBook.currentWidget()
+        query = unicode(page.uiQueryEditor.text())
+        formattedQuery = sqlparse.format(query, keyword_case="upper", reindent=True, indent_width=4, indent_tabs=False)
+        page.uiQueryEditor.setText(formattedQuery)
+
+    def setupExplorerTree(self):
+        self.Explorer = MainExplorer(database=self.database, parent=self)
+        self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.Explorer)
+
+    def setupToolBar(self):
         self.uiNewAction = QtGui.QAction(QtGui.QIcon('icons/plus.png'), '&New', self)
         self.uiNewAction.setShortcut('Ctrl+N')
         self.uiNewAction.setStatusTip('New query')
@@ -240,8 +262,27 @@ class MainQueryBook(QueryBookUI):
         self.uiShowBookMarksButton = uiShowBookMarksButton
         self.updateShowBookMarksButton()
 
+        # uiToggleDockExplorerTreeAction = self.uiDockExplorerTree.toggleViewAction()
+        # uiToggleDockExplorerTreeAction.setIcon(QtGui.QIcon('icons/bookmarks.png'))
+        # self.uiToolBar.addAction(uiToggleDockExplorerTreeAction)
+
+        self.uiToolBar.addSeparator()
+
+        self.uiRewriteAction = QtGui.QAction(QtGui.QIcon('icons/rewrite.png'), 'Rewrite', self)
+        self.uiRewriteAction.setShortcut('Ctrl+B')
+        self.uiRewriteAction.setStatusTip('Rewrite query in a beautiful manner')
+        self.uiRewriteAction.triggered.connect(self.onRewriteQuery)
+        self.uiToolBar.addAction(self.uiRewriteAction)
+
+
     def updateShowBookMarksButton(self):
         self.uiShowBookMarksButton.setMenu(ShowBookMarks(database=self.database, parent=self))
+
+    def closeEvent(self, event):
+        print('close')
+        self.settings.setValue("geometry", self.saveGeometry())
+        self.settings.setValue("windowState", self.saveState())
+        event.accept()
 
 
 def main():

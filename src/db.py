@@ -2,7 +2,6 @@ __author__ = 'lionel'
 
 import psycopg2
 
-
 class DBError:
     def __init__(self, msg):
         """Used to push messages to the UI
@@ -45,7 +44,7 @@ def execute(connection, query, size=None):
     except Exception as e:
         connection.rollback()
         return None, DBError(e.__str__()), None
-    headers = [c.name for c in cursor.description]
+    headers = [c[0] for c in cursor.description]
     res = fetch(cursor, size)
     status = cursor.statusmessage
     cursor.close()

@@ -93,6 +93,7 @@ class SaveBookMarks(SaveBookMarksUI):
         self.uiNameOldCombo.setModel(self.queryModel)
         self.uiNameOldCombo.setModelColumn(2)
         self.queryMapper = self.setupQueryMapper(self.queryModel)
+        self.onNameToggle()
 
     def setupQueryMapper(self, model):
         mapper = QtGui.QDataWidgetMapper(self)
