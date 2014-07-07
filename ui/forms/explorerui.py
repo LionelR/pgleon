@@ -9,13 +9,14 @@ class ExplorerUI(QtGui.QDockWidget):
         super(ExplorerUI, self).__init__(*args, **kwargs)
         self.initUI()
         self.setObjectName('Explorer Dock')
-        self.setWindowTitle('Explorer Dock')
+        # self.setWindowTitle('Explorer Dock')
 
     def initUI(self):
         #toolbar
         self.uiToolBar = QtGui.QToolBar('Explorer toolbar', parent=self)
         self.uiToolBar.setIconSize(QtCore.QSize(8, 8))
-        self.uiToolBar.setMovable(False)
+        # self.uiToolBar.setMovable(False)
+        self.uiToolBar.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)
 
         self.uiRefreshAction = QtGui.QAction(QtGui.QIcon('icons/refresh.png'), 'Refresh', self.uiToolBar)
         self.uiRefreshAction.setStatusTip('Refresh')
@@ -30,4 +31,12 @@ class ExplorerUI(QtGui.QDockWidget):
         self.uiToolBar.addAction(self.uiCollapseAction)
 
         self.uiExplorerTree = QtGui.QTreeView(self)
-        self.setWidget(self.uiExplorerTree)
+
+        vbox = QtGui.QVBoxLayout()
+        vbox.setSpacing(0)
+        vbox.addWidget(self.uiToolBar)
+        vbox.addWidget(self.uiExplorerTree)
+
+        widget = QtGui.QWidget(self)
+        widget.setLayout(vbox)
+        self.setWidget(widget)

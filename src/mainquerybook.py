@@ -86,13 +86,15 @@ class QueryPage(QueryPageUI):
         if isinstance(res, db.DBError):
             self.uiQueryMsg.setPlainText(QtCore.QString.fromUtf8(res.get_msg()))
             self.uiTab.setCurrentWidget(self.uiQueryMsg)
+            self.setStatus('')
         else:
-            tm = QTableModel(res, headers, self)
-            self.uiQueryResult.setModel(tm)
+            self.tm = QTableModel(res, headers, self)
+            self.uiQueryResult.setModel(self.tm)
             # self.uiQueryResult.resizeColumnsToContents()
             # self.uiQueryResult.resizeRowsToContents() #Very slow
             self.uiTab.setCurrentWidget(self.uiQueryResult)
             self.setStatus(status)
+            self.uiQueryMsg.clear()
         self._postProcessing()
 
     def runQuery(self):
@@ -139,15 +141,15 @@ class MainQueryBook(QueryBookUI):
         self.restoreState(self.settings.value("windowState").toByteArray())
 
 
-    def runQuery(self):
+    def onRunQuery(self):
         page = self.uiQueryBook.currentWidget()
         page.runQuery()
 
-    def explainQuery(self):
+    def onExplainQuery(self):
         page = self.uiQueryBook.currentWidget()
         page.explainQuery()
 
-    def analyseQuery(self):
+    def onAnalyseQuery(self):
         page = self.uiQueryBook.currentWidget()
         page.analyseQuery()
 
@@ -198,7 +200,7 @@ class MainQueryBook(QueryBookUI):
         dlg = SaveBookMarks(database=self.database, query=query)
         result = dlg.exec_()
         if result == QtGui.QDialog.Accepted:
-            self.updateShowBookMarksButton()
+            self.updateShowBookMarksMenu()
             name = dlg.getName()
             index = self.uiQueryBook.currentIndex()
             self.setPageTitle(index, name)
@@ -214,69 +216,87 @@ class MainQueryBook(QueryBookUI):
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.Explorer)
 
     def setupToolBar(self):
+        self.uiExitAction = QtGui.QAction(QtGui.QIcon('icons/exit.png'), '&Exit', self)
+        self.uiExitAction.setShortcut('Ctrl+Q')
+        self.uiExitAction.setStatusTip('Exit application')
+        self.uiExitAction.triggered.connect(self.close)
+
         self.uiNewAction = QtGui.QAction(QtGui.QIcon('icons/plus.png'), '&New', self)
         self.uiNewAction.setShortcut('Ctrl+N')
         self.uiNewAction.setStatusTip('New query')
         self.uiNewAction.triggered.connect(self.newQueryPage)
-        self.uiToolBar.addAction(self.uiNewAction)
-
-        self.uiToolBar.addSeparator()
 
         self.uiRunAction = QtGui.QAction(QtGui.QIcon('icons/run.png'), '&Run', self)
         self.uiRunAction.setShortcut('Ctrl+R')
         self.uiRunAction.setStatusTip('Run query')
-        self.uiRunAction.triggered.connect(self.runQuery)
-        self.uiToolBar.addAction(self.uiRunAction)
+        self.uiRunAction.triggered.connect(self.onRunQuery)
 
         self.uiStopAction = QtGui.QAction(QtGui.QIcon('icons/stop.png'), '&Stop', self)
         self.uiStopAction.setShortcut('Ctrl+Q')
         self.uiStopAction.setStatusTip('Stop the current query')
         self.uiStopAction.triggered.connect(self.onStopQuery)
-        self.uiToolBar.addAction(self.uiStopAction)
 
         self.uiExplainAction = QtGui.QAction(QtGui.QIcon('icons/explain.png'), '&Explain', self)
         self.uiExplainAction.setShortcut('Ctrl+E')
         self.uiExplainAction.setStatusTip('Explain query')
-        self.uiExplainAction.triggered.connect(self.explainQuery)
-        self.uiToolBar.addAction(self.uiExplainAction)
+        self.uiExplainAction.triggered.connect(self.onExplainQuery)
 
         self.uiAnalyseAction = QtGui.QAction(QtGui.QIcon('icons/analyse.png'), '&Analyse', self)
         # uiAnalyseAction.setShortcut('Ctrl+A')
         self.uiAnalyseAction.setStatusTip('Analyse query')
-        self.uiAnalyseAction.triggered.connect(self.analyseQuery)
-        self.uiToolBar.addAction(self.uiAnalyseAction)
+        self.uiAnalyseAction.triggered.connect(self.onAnalyseQuery)
 
-        self.uiToolBar.addSeparator()
+        self.uiSaveBookMarksAction = QtGui.QAction(QtGui.QIcon('icons/star.png'), '&Save', self)
+        self.uiSaveBookMarksAction.setShortcut('Ctrl+D')
+        self.uiSaveBookMarksAction.setStatusTip('Save as bookmark')
+        self.uiSaveBookMarksAction.triggered.connect(self.onSaveBookMarks)
 
-        uiSaveBookMarksAction = QtGui.QAction(QtGui.QIcon('icons/star.png'), '&Save', self)
-        uiSaveBookMarksAction.setShortcut('Ctrl+D')
-        uiSaveBookMarksAction.setStatusTip('Save as bookmark')
-        uiSaveBookMarksAction.triggered.connect(self.onSaveBookMarks)
-        self.uiToolBar.addAction(uiSaveBookMarksAction)
-
-        uiShowBookMarksButton = QtGui.QToolButton()
-        uiShowBookMarksButton.setIcon(QtGui.QIcon('icons/bookmarks.png'))
-        uiShowBookMarksButton.setStatusTip('Show all bookmarks')
-        uiShowBookMarksButton.setPopupMode(QtGui.QToolButton.InstantPopup)
-        self.uiToolBar.addWidget(uiShowBookMarksButton)
-        self.uiShowBookMarksButton = uiShowBookMarksButton
-        self.updateShowBookMarksButton()
-
-        # uiToggleDockExplorerTreeAction = self.uiDockExplorerTree.toggleViewAction()
-        # uiToggleDockExplorerTreeAction.setIcon(QtGui.QIcon('icons/bookmarks.png'))
-        # self.uiToolBar.addAction(uiToggleDockExplorerTreeAction)
-
-        self.uiToolBar.addSeparator()
+        self.uiShowBookMarksButton = QtGui.QToolButton()
+        self.uiShowBookMarksButton.setIcon(QtGui.QIcon('icons/bookmarks.png'))
+        self.uiShowBookMarksButton.setStatusTip('Show all bookmarks')
+        self.uiShowBookMarksButton.setPopupMode(QtGui.QToolButton.InstantPopup)
+        self.updateShowBookMarksMenu() #First initialization
+        self.uiShowBookMarksButton.setMenu(self.uiShowBookMarksMenu)
 
         self.uiRewriteAction = QtGui.QAction(QtGui.QIcon('icons/rewrite.png'), 'Rewrite', self)
         self.uiRewriteAction.setShortcut('Ctrl+B')
         self.uiRewriteAction.setStatusTip('Rewrite query in a beautiful manner')
         self.uiRewriteAction.triggered.connect(self.onRewriteQuery)
+
+        # uiToggleDockExplorerTreeAction = self.uiDockExplorerTree.toggleViewAction()
+        # uiToggleDockExplorerTreeAction.setIcon(QtGui.QIcon('icons/bookmarks.png'))
+        # self.uiToolBar.addAction(uiToggleDockExplorerTreeAction)
+
+        #Toolbar
+        self.uiToolBar.addAction(self.uiNewAction)
+        self.uiToolBar.addSeparator()
+        self.uiToolBar.addAction(self.uiRunAction)
+        self.uiToolBar.addAction(self.uiStopAction)
+        self.uiToolBar.addAction(self.uiExplainAction)
+        self.uiToolBar.addAction(self.uiAnalyseAction)
+        self.uiToolBar.addSeparator()
+        self.uiToolBar.addAction(self.uiSaveBookMarksAction)
+        self.uiToolBar.addWidget(self.uiShowBookMarksButton)
+        self.uiToolBar.addSeparator()
         self.uiToolBar.addAction(self.uiRewriteAction)
 
+        #Menubar
+        self.uiFileMenu = self.uiMenuBar.addMenu('&File')
+        self.uiFileMenu.addAction(self.uiExitAction)
 
-    def updateShowBookMarksButton(self):
-        self.uiShowBookMarksButton.setMenu(ShowBookMarks(database=self.database, parent=self))
+        self.uiQueryMenu = self.uiMenuBar.addMenu('&Query')
+        self.uiQueryMenu.addAction(self.uiNewAction)
+        self.uiQueryMenu.addAction(self.uiRunAction)
+        self.uiQueryMenu.addAction(self.uiStopAction)
+        self.uiQueryMenu.addAction(self.uiExplainAction)
+        self.uiQueryMenu.addAction(self.uiAnalyseAction)
+
+        self.uiBookMarksMenu = self.uiMenuBar.addMenu('&Bookmarks')
+        self.uiBookMarksMenu.addAction(self.uiSaveBookMarksAction)
+        self.uiBookMarksMenu.addMenu(self.uiShowBookMarksMenu)
+
+    def updateShowBookMarksMenu(self):
+        self.uiShowBookMarksMenu = ShowBookMarks('Bookmarks', database=self.database, parent=self)
 
     def closeEvent(self, event):
         print('close')

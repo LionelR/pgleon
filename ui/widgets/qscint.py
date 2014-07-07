@@ -64,17 +64,17 @@ class QScint(QsciScintilla):
         # Don't want to see the horizontal scrollbar at all
         # Use raw message to Scintilla here (all messages are documented
         # here: http://www.scintilla.org/ScintillaDoc.html)
-        self.SendScintilla(QsciScintilla.SCI_SETHSCROLLBAR, 0)
+        # self.SendScintilla(QsciScintilla.SCI_SETHSCROLLBAR, 0)
 
         # not too small
         self.setMinimumSize(50, 50)
 
-    def on_margin_clicked(self, nmargin, nline, modifiers):
-        # Toggle marker for the line the margin was clicked on
-        if self.markersAtLine(nline) != 0:
-            self.markerDelete(nline, self.ARROW_MARKER_NUM)
-        else:
-            self.markerAdd(nline, self.ARROW_MARKER_NUM)
+    # def on_margin_clicked(self, nmargin, nline, modifiers):
+    #     # Toggle marker for the line the margin was clicked on
+    #     if self.markersAtLine(nline) != 0:
+    #         self.markerDelete(nline, self.ARROW_MARKER_NUM)
+    #     else:
+    #         self.markerAdd(nline, self.ARROW_MARKER_NUM)
 
 
 if __name__ == "__main__":

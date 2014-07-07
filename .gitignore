@@ -1,4 +1,5 @@
 .idea/
 *.pyc
 src/pgleon.db
+src/test.py
 externals
