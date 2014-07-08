@@ -39,6 +39,7 @@ class MainUI(QtGui.QMainWindow):
         self.uiDatabaseEdit = QtGui.QLineEdit()
         self.uiUserEdit = QtGui.QLineEdit()
         self.uiPasswordEdit = QtGui.QLineEdit()
+        self.uiPasswordEdit.setEchoMode(QtGui.QLineEdit.Password)
         self.uiTestButton = QtGui.QPushButton('Test')
         form = QtGui.QFormLayout()
         form.addRow("Name", self.uiNameEdit)
