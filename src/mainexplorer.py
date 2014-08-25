@@ -11,13 +11,13 @@ class MainExplorer(ExplorerUI):
 
     def __init__(self, *args, **kwargs):
         self.icons = {
-            'table': QtGui.QIcon('icons/table.png'),
-            'view': QtGui.QIcon('icons/view.png'),
-            'index': QtGui.QIcon('icons/index.png'),
-            'sequence': QtGui.QIcon('icons/sequence.png'),
-            'materialized view': QtGui.QIcon('icons/materialized_view.png'),
-            'foreign table': QtGui.QIcon('icons/foreign_table.png'),
-            'special': QtGui.QIcon('icons/view.png'),
+            'tables': QtGui.QIcon('icons/table.png'),
+            'views': QtGui.QIcon('icons/view.png'),
+            'indexes': QtGui.QIcon('icons/index.png'),
+            'sequences': QtGui.QIcon('icons/sequence.png'),
+            'materialized views': QtGui.QIcon('icons/materialized_view.png'),
+            'foreign tables': QtGui.QIcon('icons/foreign_table.png'),
+            'specials': QtGui.QIcon('icons/view.png'),
             'schema': QtGui.QIcon('icons/schema.png'),
             }
         self.database = kwargs.pop("database")
@@ -29,13 +29,13 @@ class MainExplorer(ExplorerUI):
         query = """SELECT
             n.nspname as "schema",
             CASE c.relkind
-                WHEN 'r' THEN 'table'
-                WHEN 'v' THEN 'view'
-                WHEN 'm' THEN 'materialized view'
-                WHEN 'i' THEN 'index'
-                WHEN 'S' THEN 'sequence'
-                WHEN 's' THEN 'special'
-                WHEN 'f' THEN 'foreign table'
+                WHEN 'r' THEN 'tables'
+                WHEN 'v' THEN 'views'
+                WHEN 'm' THEN 'materialized views'
+                WHEN 'i' THEN 'indexes'
+                WHEN 'S' THEN 'sequences'
+                WHEN 's' THEN 'specials'
+                WHEN 'f' THEN 'foreign tables'
             END as "type",
             c.relname as "name",
             pg_catalog.pg_get_userbyid(c.relowner) as "owner",
@@ -73,7 +73,7 @@ class MainExplorer(ExplorerUI):
                 parentType = type_ #Set the type as the parent type
                 typeItem = QtGui.QStandardItem(self.icons[type_], type_)
                 schemaItem.appendRow(typeItem)
-            nameItem = QtGui.QStandardItem(name)
+            nameItem = QtGui.QStandardItem(self.icons[type_], name)
             ownerItem = QtGui.QStandardItem(owner)
             oidItem = QtGui.QStandardItem(oid)
             typeItem.appendRow([nameItem, ownerItem, oidItem])

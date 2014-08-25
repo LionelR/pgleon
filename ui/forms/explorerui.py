@@ -9,7 +9,7 @@ class ExplorerUI(QtGui.QDockWidget):
         super(ExplorerUI, self).__init__(*args, **kwargs)
         self.initUI()
         self.setObjectName('Explorer Dock')
-        # self.setWindowTitle('Explorer Dock')
+        self.setWindowTitle('Explorer Dock')
 
     def initUI(self):
         #toolbar

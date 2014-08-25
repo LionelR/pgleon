@@ -117,7 +117,6 @@ class MainQueryBook(QueryBookUI):
         super(MainQueryBook, self).__init__()
         self.database = database
         self.setWindowTitle(self.database.name)
-        self.setupToolBar()
 
         self.uiQueryBook.setTabsClosable(True)
         self.uiQueryBook.setMovable(True)
@@ -128,6 +127,9 @@ class MainQueryBook(QueryBookUI):
 
         #ExplorerTree
         self.setupExplorerTree()
+
+        #Toolbar and menubar
+        self.setupToolBar()
 
         #Signals
         self.uiQueryBook.tabCloseRequested.connect(self.onClosePage)
@@ -263,10 +265,6 @@ class MainQueryBook(QueryBookUI):
         self.uiRewriteAction.setStatusTip('Rewrite query in a beautiful manner')
         self.uiRewriteAction.triggered.connect(self.onRewriteQuery)
 
-        # uiToggleDockExplorerTreeAction = self.uiDockExplorerTree.toggleViewAction()
-        # uiToggleDockExplorerTreeAction.setIcon(QtGui.QIcon('icons/bookmarks.png'))
-        # self.uiToolBar.addAction(uiToggleDockExplorerTreeAction)
-
         #Toolbar
         self.uiToolBar.addAction(self.uiNewAction)
         self.uiToolBar.addSeparator()
@@ -295,8 +293,16 @@ class MainQueryBook(QueryBookUI):
         self.uiBookMarksMenu.addAction(self.uiSaveBookMarksAction)
         self.uiBookMarksMenu.addMenu(self.uiShowBookMarksMenu)
 
+        self.uiWindowMenu = self.uiMenuBar.addMenu('&Window')
+        self.uiToggleDockExplorerTreeAction = self.Explorer.toggleViewAction()
+        self.uiWindowMenu.addAction(self.uiToggleDockExplorerTreeAction)
+        self.uiToggleToolbarAction = self.uiToolBar.toggleViewAction()
+        self.uiWindowMenu.addAction(self.uiToggleToolbarAction)
+
+
     def updateShowBookMarksMenu(self):
         self.uiShowBookMarksMenu = ShowBookMarks('Bookmarks', database=self.database, parent=self)
+
 
     def closeEvent(self, event):
         print('close')
