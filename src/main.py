@@ -4,7 +4,8 @@ __author__ = 'lionel'
 
 import sys
 from PyQt4 import QtGui
-from mainconf import MainConf
+
+from pgleon.src.mainconf import MainConf
 from src.conf import title
 
 

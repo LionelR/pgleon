@@ -18,6 +18,7 @@ class MainUI(QtGui.QMainWindow):
 
         #Left side
         self.uiConnList = QtGui.QListView()
+        self.uiConnList.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
         self.uiAppendButton = QtGui.QPushButton("+")
         self.uiDeleteButton = QtGui.QPushButton("-")
         self.uiEditButton = QtGui.QPushButton("Edit")

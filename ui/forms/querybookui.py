@@ -13,8 +13,15 @@ class QueryPageUI(QtGui.QWidget):
         self.initUI()
 
     def initUI(self):
+        # self.uiToolBar = self.addToolBar('Main Toolbar')
+        self.uiToolBar = QtGui.QToolBar('Main toolbar', parent=self)
+        self.uiToolBar.setObjectName('Main Toolbar')
+        self.uiToolBar.setIconSize(QtCore.QSize(32, 32))
+        self.uiToolBar.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)
+
         self.uiQueryEditor = QScint(self)
         self.uiQueryResult = QtGui.QTableView(self)
+        self.uiQueryResult.setAlternatingRowColors(True)
         self.uiQueryMsg = QtGui.QTextEdit(self)
         self.uiStatusLabel = QtGui.QLabel(self)
 
@@ -22,11 +29,13 @@ class QueryPageUI(QtGui.QWidget):
         self.uiTab.addTab(self.uiQueryResult, "Results")
         self.uiTab.addTab(self.uiQueryMsg, "Messages")
 
-        uiVSplitter = QtGui.QSplitter(QtCore.Qt.Vertical)
-        uiVSplitter.addWidget(self.uiQueryEditor)
-        uiVSplitter.addWidget(self.uiTab)
+        self.uiVSplitter = QtGui.QSplitter(QtCore.Qt.Vertical)
+        self.uiVSplitter.addWidget(self.uiQueryEditor)
+        self.uiVSplitter.addWidget(self.uiTab)
+        self.uiVSplitter.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
         uiVBox = QtGui.QVBoxLayout(self)
-        uiVBox.addWidget(uiVSplitter)
+        uiVBox.addWidget(self.uiToolBar)
+        uiVBox.addWidget(self.uiVSplitter)
         uiVBox.addWidget(self.uiStatusLabel)
 
         self.setLayout(uiVBox)
@@ -35,7 +44,6 @@ class QueryPageUI(QtGui.QWidget):
         self.uiStatusLabel.setText(status)
 
 
-# class MainUI(QtGui.QWidget):
 class QueryBookUI(QtGui.QMainWindow):
 
     def __init__(self):
@@ -44,10 +52,6 @@ class QueryBookUI(QtGui.QMainWindow):
 
     def initUI(self):
         self.uiMenuBar = self.menuBar()
-        # self.initMenu()
-
-        self.uiToolBar = self.addToolBar('Main Toolbar')
-        self.uiToolBar.setObjectName('Main Toolbar')
 
         self.uiQueryBook = QtGui.QTabWidget()
         self.setCentralWidget(self.uiQueryBook)
@@ -57,15 +61,6 @@ class QueryBookUI(QtGui.QMainWindow):
         self.uiStatusBar = self.statusBar()
 
         self.show()
-
-    # def initMenu(self):
-    #     uiExitAction = QtGui.QAction(QtGui.QIcon('icons/exit.png'), '&Exit', self)
-    #     uiExitAction.setShortcut('Ctrl+Q')
-    #     uiExitAction.setStatusTip('Exit application')
-    #     uiExitAction.triggered.connect(QtGui.qApp.quit)
-    #
-    #     uiFileMenu = self.uiMenuBar.addMenu('&File')
-    #     uiFileMenu.addAction(uiExitAction)
 
 
 

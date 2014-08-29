@@ -31,6 +31,7 @@ class ExplorerUI(QtGui.QDockWidget):
         self.uiToolBar.addAction(self.uiCollapseAction)
 
         self.uiExplorerTree = QtGui.QTreeView(self)
+        self.uiExplorerTree.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
 
         vbox = QtGui.QVBoxLayout()
         vbox.setSpacing(0)
