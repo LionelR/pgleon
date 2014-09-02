@@ -35,6 +35,7 @@ class MainConf(MainUI):
         self.uiCancelButton.clicked.connect(self.onCancel)
         self.uiTestButton.clicked.connect(self.onTest)
         self.uiOpenButton.clicked.connect(self.onOpen)
+        self.uiConnList.doubleClicked.connect(self.onOpen)
 
         self.editMode(False)
         self.show()

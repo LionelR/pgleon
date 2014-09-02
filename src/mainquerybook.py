@@ -241,7 +241,8 @@ class MainQueryBook(QueryBookUI):
         dlg = SaveBookMarks(database=self.database, query=query)
         result = dlg.exec_()
         if result == QtGui.QDialog.Accepted:
-            self.updateShowBookMarksMenu()
+            self.uiShowBookMarksMenu.clear()
+            self.uiShowBookMarksMenu.initMenu()
             name = dlg.getName()
             index = self.uiQueryBook.currentIndex()
             self.setPageTitle(index, name)
@@ -275,17 +276,12 @@ class MainQueryBook(QueryBookUI):
         # self.uiShowBookMarksButton.setStatusTip('Show all bookmarks')
         # self.uiShowBookMarksButton.setPopupMode(QtGui.QToolButton.InstantPopup)
         # self.uiShowBookMarksButton.setMenu(self.uiShowBookMarksMenu)
-        self.updateShowBookMarksMenu() #First initialization
+        self.uiShowBookMarksMenu = ShowBookMarks('Bookmarks', database=self.database, parent=self)
         self.uiQueryMenu.addMenu(self.uiShowBookMarksMenu)
 
         self.uiWindowMenu = self.uiMenuBar.addMenu('&Window')
         self.uiToggleDockExplorerTreeAction = self.Explorer.toggleViewAction()
         self.uiWindowMenu.addAction(self.uiToggleDockExplorerTreeAction)
-        # self.uiToggleToolbarAction = self.uiToolBar.toggleViewAction()
-        # self.uiWindowMenu.addAction(self.uiToggleToolbarAction)
-
-    def updateShowBookMarksMenu(self):
-        self.uiShowBookMarksMenu = ShowBookMarks('Bookmarks', database=self.database, parent=self)
 
     def closeEvent(self, event):
         print('close')
