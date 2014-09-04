@@ -182,10 +182,11 @@ class QueryPage(QueryPageUI):
 
 
 class MainQueryBook(QueryBookUI):
-    def __init__(self, database):
+    def __init__(self, database, icon):
         super(MainQueryBook, self).__init__()
         self.database = database
         self.setWindowTitle(self.database.name)
+        self.setWindowIcon(icon)
 
         self.uiQueryBook.setTabsClosable(True)
         self.uiQueryBook.setMovable(True)

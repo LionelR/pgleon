@@ -16,8 +16,9 @@ name = "PGLeon"
 version = "0.1"
 
 
-def title():
-    return "{0:s} - {1:s}".format(name, version)
+title = "{0:s} - {1:s}".format(name, version)
+
+icon_path = 'icons/pgleon.png'
 
 
 def localFolder():

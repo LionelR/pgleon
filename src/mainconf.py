@@ -13,9 +13,11 @@ TEMPID = "-999"
 
 
 class MainConf(MainUI):
-    def __init__(self, title=""):
+    def __init__(self, title, icon_path):
         super(MainConf, self).__init__()
-        self.setTitle(title)
+        self.setWindowTitle(title)
+        self.icon = QtGui.QIcon(icon_path)
+        self.setWindowIcon(self.icon)
         self.queryBookList = list()
         self.initMenu()
 
@@ -74,9 +76,6 @@ class MainConf(MainUI):
         exit_action.triggered.connect(QtGui.qApp.quit)
         file_menu = self.menu_bar.addMenu('&File')
         file_menu.addAction(exit_action)
-
-    def setTitle(self, title):
-        self.setWindowTitle(title)
 
     def onItemChanged(self, index):
         """When the user select/change a item in the left list of connections"""
@@ -163,7 +162,7 @@ class MainConf(MainUI):
         try:
             connection = database.newConnection()
             connection.close()
-            queryBook = MainQueryBook(database)
+            queryBook = MainQueryBook(database=database, icon=self.icon)
             self.queryBookList.append(queryBook)
             queryBook.show()
         except Exception, error:
