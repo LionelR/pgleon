@@ -11,7 +11,7 @@ from ui.forms.querybookui import QueryBookUI, QueryPageUI
 from ui.widgets.qtable import QTableModel
 from src.mainexplorer import MainExplorer
 import sqlparse
-
+import resources_rc
 
 class GenericThread(QtCore.QThread):
     def __init__(self, function, *args, **kwargs):
@@ -134,37 +134,37 @@ class QueryPage(QueryPageUI):
         self.uiVSplitter.setOrientation(QtCore.Qt.Horizontal)
 
     def setupToolBar(self):
-        self.uiRunAction = QtGui.QAction(QtGui.QIcon('icons/run.png'), '&Run', self)
+        self.uiRunAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/run.png')), '&Run', self)
         self.uiRunAction.setShortcut('Ctrl+R')
         self.uiRunAction.setStatusTip('Run query')
         self.uiRunAction.triggered.connect(self.onRunQuery)
 
-        self.uiStopAction = QtGui.QAction(QtGui.QIcon('icons/stop.png'), '&Stop', self)
+        self.uiStopAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/stop.png')), '&Stop', self)
         self.uiStopAction.setShortcut('Ctrl+Q')
         self.uiStopAction.setStatusTip('Stop the current query')
         self.uiStopAction.triggered.connect(self.onCancelQuery)
 
-        self.uiExplainAction = QtGui.QAction(QtGui.QIcon('icons/explain.png'), '&Explain', self)
+        self.uiExplainAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/explain.png')), '&Explain', self)
         self.uiExplainAction.setShortcut('Ctrl+E')
         self.uiExplainAction.setStatusTip('Explain query')
         self.uiExplainAction.triggered.connect(self.onExplainQuery)
 
-        self.uiAnalyseAction = QtGui.QAction(QtGui.QIcon('icons/analyse.png'), '&Analyse', self)
+        self.uiAnalyseAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/analyse.png')), '&Analyse', self)
         # uiAnalyseAction.setShortcut('Ctrl+A')
         self.uiAnalyseAction.setStatusTip('Analyse query')
         self.uiAnalyseAction.triggered.connect(self.onAnalyseQuery)
 
-        self.uiRewriteAction = QtGui.QAction(QtGui.QIcon('icons/rewrite.png'), 'Rewrite', self)
+        self.uiRewriteAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/rewrite.png')), 'Rewrite', self)
         self.uiRewriteAction.setShortcut('Ctrl+B')
         self.uiRewriteAction.setStatusTip('Rewrite query in a beautiful manner')
         self.uiRewriteAction.triggered.connect(self.onRewriteQuery)
 
-        self.uiSetVerticalAction = QtGui.QAction(QtGui.QIcon('icons/vertical.png'), 'Vertical', self)
+        self.uiSetVerticalAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/vertical.png')), 'Vertical', self)
         self.uiSetVerticalAction.setShortcut('Ctrl+Shift+V')
         self.uiSetVerticalAction.setStatusTip('Set the query page vertically')
         self.uiSetVerticalAction.triggered.connect(self.onSetVertical)
 
-        self.uiSetHorizontalAction = QtGui.QAction(QtGui.QIcon('icons/horizontal.png'), 'Horizontal', self)
+        self.uiSetHorizontalAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/horizontal.png')), 'Horizontal', self)
         self.uiSetHorizontalAction.setShortcut('Ctrl+Shift+H')
         self.uiSetHorizontalAction.setStatusTip('Set the query page horizontally')
         self.uiSetHorizontalAction.triggered.connect(self.onSetHorizontal)
@@ -255,19 +255,19 @@ class MainQueryBook(QueryBookUI):
     def setupMenuBar(self):
         #Menubar
         self.uiFileMenu = self.uiMenuBar.addMenu('&File')
-        self.uiExitAction = QtGui.QAction(QtGui.QIcon('icons/exit.png'), '&Exit', self)
+        self.uiExitAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/exit.png')), '&Exit', self)
         self.uiExitAction.setShortcut('Ctrl+Q')
         self.uiExitAction.setStatusTip('Exit application')
         self.uiExitAction.triggered.connect(self.close)
         self.uiFileMenu.addAction(self.uiExitAction)
 
         self.uiQueryMenu = self.uiMenuBar.addMenu('&Query')
-        self.uiNewAction = QtGui.QAction(QtGui.QIcon('icons/plus.png'), '&New', self)
+        self.uiNewAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/plus.png')), '&New', self)
         self.uiNewAction.setShortcut('Ctrl+N')
         self.uiNewAction.setStatusTip('New query')
         self.uiNewAction.triggered.connect(self.newQueryPage)
         self.uiQueryMenu.addAction(self.uiNewAction)
-        self.uiSaveBookMarksAction = QtGui.QAction(QtGui.QIcon('icons/star.png'), '&Save', self)
+        self.uiSaveBookMarksAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/star.png')), '&Save', self)
         self.uiSaveBookMarksAction.setShortcut('Ctrl+D')
         self.uiSaveBookMarksAction.setStatusTip('Save as bookmark')
         self.uiSaveBookMarksAction.triggered.connect(self.onSaveBookMarks)

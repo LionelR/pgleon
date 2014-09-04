@@ -1,0 +1,29 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+
+<file alias="analyse.png">icons/analyse.png</file>
+<file alias="collapse.png">icons/collapse.png</file>
+<file alias="exit.png">icons/exit.png</file>
+<file alias="explain.png">icons/explain.png</file>
+<file alias="horizontal.png">icons/horizontal.png</file>
+<file alias="materialized_view.png">icons/materialized_view.png</file>
+<file alias="plus.png">icons/plus.png</file>
+<file alias="rewrite.png">icons/rewrite.png</file>
+<file alias="schema.png">icons/schema.png</file>
+<file alias="star.png">icons/star.png</file>
+<file alias="table.png">icons/table.png</file>
+<file alias="view.png">icons/view.png</file>
+<file alias="bookmarks.png">icons/bookmarks.png</file>
+<file alias="column.png">icons/column.png</file>
+<file alias="expand.png">icons/expand.png</file>
+<file alias="foreign_table.png">icons/foreign_table.png</file>
+<file alias="index.png">icons/index.png</file>
+<file alias="pgleon.png">icons/pgleon.png</file>
+<file alias="refresh.png">icons/refresh.png</file>
+<file alias="run.png">icons/run.png</file>
+<file alias="sequence.png">icons/sequence.png</file>
+<file alias="stop.png">icons/stop.png</file>
+<file alias="vertical.png">icons/vertical.png</file>
+
+</qresource>
+</RCC>

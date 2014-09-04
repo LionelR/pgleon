@@ -11,15 +11,15 @@ class MainExplorer(ExplorerUI):
 
     def __init__(self, *args, **kwargs):
         self.icons = {
-            'columns': QtGui.QIcon('icons/column.png'),
-            'tables': QtGui.QIcon('icons/table.png'),
-            'views': QtGui.QIcon('icons/view.png'),
-            'indexes': QtGui.QIcon('icons/index.png'),
-            'sequences': QtGui.QIcon('icons/sequence.png'),
-            'materialized views': QtGui.QIcon('icons/materialized_view.png'),
-            'foreign tables': QtGui.QIcon('icons/foreign_table.png'),
-            'specials': QtGui.QIcon('icons/view.png'),
-            'schema': QtGui.QIcon('icons/schema.png'),
+            'columns': QtGui.QIcon(QtGui.QPixmap(':/column.png')),
+            'tables': QtGui.QIcon(QtGui.QPixmap(':/table.png')),
+            'views': QtGui.QIcon(QtGui.QPixmap(':/view.png')),
+            'indexes': QtGui.QIcon(QtGui.QPixmap(':/index.png')),
+            'sequences': QtGui.QIcon(QtGui.QPixmap(':/sequence.png')),
+            'materialized views': QtGui.QIcon(QtGui.QPixmap(':/materialized_view.png')),
+            'foreign tables': QtGui.QIcon(QtGui.QPixmap(':/foreign_table.png')),
+            'specials': QtGui.QIcon(QtGui.QPixmap(':/view.png')),
+            'schema': QtGui.QIcon(QtGui.QPixmap(':/schema.png')),
             }
         self.database = kwargs.pop("database")
         super(MainExplorer, self).__init__(*args, **kwargs)
@@ -83,10 +83,10 @@ class MainExplorer(ExplorerUI):
             # oidItem = QtGui.QStandardItem(oid)
             # typeItem.appendRow([nameItem, ownerItem, oidItem])
             typeItem.appendRow(nameItem)
-            if type_ in ('tables', 'views', 'materialized views'):
-                for colName in self.getColumnsName(schema, name):
-                    colNameItem = QtGui.QStandardItem(self.icons['columns'], colName[0])
-                    nameItem.appendRow(colNameItem)
+            # if type_ in ('tables', 'views', 'materialized views'):
+            #     for colName in self.getColumnsName(schema, name):
+            #         colNameItem = QtGui.QStandardItem(self.icons['columns'], colName[0])
+            #         nameItem.appendRow(colNameItem)
 
     def getColumnsName(self, schema, table):
         query = """SELECT
