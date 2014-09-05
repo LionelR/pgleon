@@ -4,7 +4,8 @@ from PyQt4 import QtGui, QtCore
 from ui.forms.explorerui import ExplorerUI
 from src import db
 import explorermodel as em
-
+import string
+from functools import partial
 
 __author__ = 'lionel'
 
@@ -36,10 +37,14 @@ class MainExplorer(ExplorerUI):
         self.setupToolBar()
 
         #Signals
-        self.uiExplorerTree.doubleClicked.connect(self.onDoubleClick)
+        self.view.doubleClicked.connect(self.onDoubleClick)
+        self.view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.view.customContextMenuRequested.connect(self.onContextMenu)
+
 
     def setupExplorer(self):
         self.view.reset()
+        self.model.removeRows(0, self.model.rowCount(QtCore.QModelIndex()))
 
         query = """SELECT
             n.nspname as "schema",
@@ -95,11 +100,12 @@ class MainExplorer(ExplorerUI):
                 nameItem = em.Special(name, typeItem, icon=self.icons["SPECIAL"])
 
                 # if type_ in ('tables', 'views', 'materialized views'):
-                #     for colName in self.getColumnsName(schema, name):
+                #     for colName in self.getColumnsNamesAndDesc(schema, name):
                 #         colNameItem = QtGui.QStandardItem(self.icons['columns'], colName[0])
                 #         nameItem.appendRow(colNameItem)
 
-    def getColumnsName(self, schema, table):
+    def getColumnsNamesAndDesc(self, schema, table):
+        """Returns columns names list with extra information (primary key * and type)"""
         query = """SELECT
         concat(f.attname, CASE WHEN p.contype = 'p' THEN '*' ELSE '' END, ' ('::varchar, pg_catalog.format_type(f.atttypid,f.atttypmod), ')'::varchar) AS name
         FROM pg_attribute f
@@ -115,7 +121,46 @@ class MainExplorer(ExplorerUI):
         conn = self.database.newConnection()
         _, res, _ = db.execute(conn, query)
         conn.close()
+        res = [r[0] for r in res]
         return res
+
+    def getColumnsNames(self, schema, table):
+        """Returns columns names list"""
+        def convert(t):
+            def hasUpper(t):
+                for i in t:
+                    if i in string.uppercase:
+                        return True
+                return False
+            if hasUpper(t):
+                return '"%s"'%t
+            else:
+                return t
+
+        query = """SELECT
+        f.attname AS name
+        FROM pg_attribute f
+        JOIN pg_class c ON c.oid = f.attrelid
+        LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
+        LEFT JOIN pg_constraint p ON p.conrelid = c.oid
+        AND f.attnum = ANY (p.conkey)
+        WHERE c.relkind IN ('r', 'v', 'm')
+            AND n.nspname = '{0:s}'
+            AND c.relname = '{1:s}'
+            AND f.attnum > 0
+        ORDER BY f.attnum""".format(schema, table)
+        conn = self.database.newConnection()
+        _, res, _ = db.execute(conn, query)
+        conn.close()
+        res = [convert(r[0]) for r in res]
+        return res
+
+    def getNames(self, index):
+        """Gets names of schema and object (table, view, ...) of the node at index"""
+        parentNode = self.model.getNode(index)
+        schemaIndex = self.model.parent(self.model.parent(index))  # Needed to jump the generic node
+        schemaNode = self.model.getNode(schemaIndex)
+        return schemaNode.name(), parentNode.name()
 
     def setupToolBar(self):
         self.uiRefreshAction.triggered.connect(self.onRefresh)
@@ -137,7 +182,48 @@ class MainExplorer(ExplorerUI):
             childCount = parentNode.childCount()
             if childCount > 0:
                 self.model.removeRows(0, childCount, index)
-            parentIndex = self.model.parent(self.model.parent(index))  # Needed to jump the generic node
-            schemaNode = self.model.getNode(parentIndex)
-            columns = self.getColumnsName(schemaNode.name(), parentNode.name())
+            schemaName, tableName = self.getNames(index)
+            columns = self.getColumnsNamesAndDesc(schemaName, tableName)
             self.model.insertColumnNames(0, columns, index)
+
+    def onContextMenu(self, point):
+        index = self.view.indexAt(point)
+        parentNode = self.model.getNode(index)
+        globalPos = self.view.mapToGlobal(point)
+        if parentNode.typeInfo() in ("TABLE", "VIEW", "MATERIALIZED VIEW"):
+            schemaName, tableName = self.getNames(index)
+
+            uiMenu = QtGui.QMenu()
+
+            uiQueryLimitAction = QtGui.QAction('SHOW PARTIAL', self)
+            uiQueryLimitAction.setStatusTip('Select all and limit to 500 rows')
+            uiQueryLimitAction.triggered.connect(partial(self.onQueryLimit, schemaName, tableName))
+            uiMenu.addAction(uiQueryLimitAction)
+
+            uiQueryAllAction = QtGui.QAction('SHOW ALL', self)
+            uiQueryAllAction.setStatusTip('Select all (may be slow...)')
+            uiQueryAllAction.triggered.connect(partial(self.onQueryAll, schemaName, tableName))
+            uiMenu.addAction(uiQueryAllAction)
+
+            uiMenu.exec_(globalPos)
+
+
+    def onQueryLimit(self, schemaName, tableName):
+        columns = self.getColumnsNames(schemaName, tableName)
+        query = """SELECT {0:s}
+        FROM "{1:s}"."{2:s}"
+        LIMIT 500""".format(','.join(columns), schemaName, tableName)
+        page = self.nativeParentWidget().newQueryPage()
+        page.uiQueryEditor.setText(query)
+        page.onRewriteQuery()
+        page.onRunQuery()
+
+    def onQueryAll(self, schemaName, tableName):
+        columns = self.getColumnsNames(schemaName, tableName)
+        query = """SELECT {0:s}
+        FROM "{1:s}"."{2:s}"
+        """.format(','.join(columns), schemaName, tableName)
+        page = self.nativeParentWidget().newQueryPage()
+        page.uiQueryEditor.setText(query)
+        page.onRewriteQuery()
+        page.onRunQuery()

@@ -1,13 +1,10 @@
 #-*- coding:utf-8 -*-
-from PyQt4 import QtGui
-
-__author__ = 'lionel'
-
-from PyQt4 import QtCore
+from PyQt4 import QtGui, QtCore
 from functools import partial
 from src.conf import Query, GlobalQuery, Section
 from ui.forms.bookmarksui import EditBookMarksUI, SaveBookMarksUI
 
+__author__ = 'lionel'
 
 GLOBALID = "-999"
 

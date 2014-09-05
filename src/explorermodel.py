@@ -258,6 +258,7 @@ class ExplorerModel(QtCore.QAbstractItemModel):
         """INPUTS: int, int, QModelIndex"""
         parentNode = self.getNode(parent)
         self.beginInsertRows(parent, position, position + rows - 1)
+        success = False
         for row in range(rows):
             childCount = parentNode.childCount()
             childNode = Node("untitled" + str(childCount))
@@ -269,11 +270,12 @@ class ExplorerModel(QtCore.QAbstractItemModel):
     def insertColumnNames(self, position, columns, parent=QtCore.QModelIndex()):
         """INPUTS: int, int, QModelIndex"""
         parentNode = self.getNode(parent)
+        success = False
         if parentNode.typeInfo() in ("TABLE", "VIEW", "MATERIALIZED VIEW") and len(columns) > 0:
             self.beginInsertRows(parent, position, position + len(columns) - 1)
             for column in columns:
                 # childCount = parentNode.childCount()
-                childNode = ColumnNode(column[0])
+                childNode = ColumnNode(column)
                 success = parentNode.insertChild(position, childNode)
             self.endInsertRows()
             return success
@@ -283,6 +285,7 @@ class ExplorerModel(QtCore.QAbstractItemModel):
         INPUTS: int, int, QModelIndex
         """
         parentNode = self.getNode(parent)
+        success = False
         self.beginRemoveRows(parent, position, position + rows - 1)
         for row in range(rows):
             success = parentNode.removeChild(position)
