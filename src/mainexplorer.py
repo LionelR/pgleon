@@ -61,9 +61,9 @@ class MainExplorer(ExplorerUI):
         FROM pg_catalog.pg_class c
         LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
         WHERE c.relkind IN ('r','v','m','S','f','')
-            AND n.nspname <> 'pg_catalog'
-            AND n.nspname <> 'information_schema'
-            AND n.nspname !~ '^pg_toast'
+            --AND n.nspname <> 'pg_catalog'
+            --AND n.nspname <> 'information_schema'
+            --AND n.nspname !~ '^pg_toast'
         ORDER BY 1,2,3"""
         conn = self.database.newConnection()
         headers, res, status = db.execute(conn, query)
@@ -148,7 +148,7 @@ class MainExplorer(ExplorerUI):
             AND n.nspname = '{0:s}'
             AND c.relname = '{1:s}'
             AND f.attnum > 0
-        ORDER BY f.attnum""".format(schema, table)
+        ORDER BY f.attnum DESC""".format(schema, table)
         conn = self.database.newConnection()
         _, res, _ = db.execute(conn, query)
         conn.close()
@@ -216,6 +216,7 @@ class MainExplorer(ExplorerUI):
         page = self.nativeParentWidget().newQueryPage()
         page.uiQueryEditor.setText(query)
         page.onRewriteQuery()
+        page.setCurrentName(tableName)
         page.onRunQuery()
 
     def onQueryAll(self, schemaName, tableName):
@@ -226,4 +227,5 @@ class MainExplorer(ExplorerUI):
         page = self.nativeParentWidget().newQueryPage()
         page.uiQueryEditor.setText(query)
         page.onRewriteQuery()
+        page.setCurrentName(tableName)
         page.onRunQuery()

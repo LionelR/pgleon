@@ -24,6 +24,7 @@ class QueryPageUI(QtGui.QWidget):
         self.uiQueryResult.setAlternatingRowColors(True)
         self.uiQueryMsg = QtGui.QTextEdit(self)
         self.uiStatusLabel = QtGui.QLabel(self)
+        self.uiTimerLabel = QtGui.QLabel(self)
 
         self.uiTab = QtGui.QTabWidget(self)
         self.uiTab.addTab(self.uiQueryResult, "Results")
@@ -36,7 +37,12 @@ class QueryPageUI(QtGui.QWidget):
         uiVBox = QtGui.QVBoxLayout(self)
         uiVBox.addWidget(self.uiToolBar)
         uiVBox.addWidget(self.uiVSplitter)
-        uiVBox.addWidget(self.uiStatusLabel)
+
+        uiHBox = QtGui.QHBoxLayout(self)
+        uiHBox.addWidget(self.uiStatusLabel)
+        uiHBox.addStretch()
+        uiHBox.addWidget(self.uiTimerLabel)
+        uiVBox.addLayout(uiHBox)
 
         self.setLayout(uiVBox)
 

@@ -13,6 +13,7 @@ from src.mainexplorer import MainExplorer
 import sqlparse
 import resources_rc
 
+
 class GenericThread(QtCore.QThread):
     def __init__(self, function, *args, **kwargs):
         QtCore.QThread.__init__(self)
@@ -37,8 +38,23 @@ class QueryPage(QueryPageUI):
         self.name = ""
         self.queryThread = None
         super(QueryPage, self).__init__(*args, **kwargs)
+
+        # Query result tableView
         fontSize = self.uiQueryResult.verticalHeader().font().pointSize()
         self.uiQueryResult.verticalHeader().setDefaultSectionSize(fontSize + 2 * 3)
+        self.uiQueryResult.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+        self.uiQueryResult.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+
+        # allow to copy results
+        copyAction = QtGui.QAction("Copy data", self)
+        copyAction.setShortcuts(QtGui.QKeySequence.Copy)
+        copyAction.triggered.connect(self.onCopySelectedResults)
+        self.addAction(copyAction)
+
+        #Timer
+        self.time = 0
+        self.timer = QtCore.QTimer(self)
+        self.timer.timeout.connect(self.onTimeOut)
 
         #Toolbar
         self.setupToolBar()
@@ -88,10 +104,12 @@ class QueryPage(QueryPageUI):
     def _preProcessing(self):
         """Preprocessing operations before running query"""
         self._checkRunning()
+        self.timer.start(1)
 
     def _postProcessing(self):
         """Apply operations after running query"""
         self._checkRunning()
+        self.timer.stop()
 
     def _setResult(self, headers, res, status):
         if isinstance(res, db.DBError):
@@ -99,8 +117,8 @@ class QueryPage(QueryPageUI):
             self.uiTab.setCurrentWidget(self.uiQueryMsg)
             self.setStatus('')
         else:
-            self.tm = QTableModel(res, headers, self)
-            self.uiQueryResult.setModel(self.tm)
+            self.model = QTableModel(res, headers, self)
+            self.uiQueryResult.setModel(self.model)
             self.uiQueryResult.resizeColumnsToContents()
             # self.uiQueryResult.resizeRowsToContents() #Very slow
             self.uiTab.setCurrentWidget(self.uiQueryResult)
@@ -132,6 +150,38 @@ class QueryPage(QueryPageUI):
 
     def onSetHorizontal(self):
         self.uiVSplitter.setOrientation(QtCore.Qt.Horizontal)
+
+    def onTimeOut(self):
+        self.time += 1
+        self.uiTimerLabel.setText(str(self.time))
+
+    def onCopySelectedResults(self):
+        """Copy the selected datas (entire rows selections) from the queryResult table
+        to the clipboard"""
+        # Get the selected indexes from the view
+        indexes = self.uiQueryResult.selectedIndexes()
+        # If nothing selected, return
+        if len(indexes) <= 0:
+            return
+        # By default the selected indexes are sorted first by row, after by column, but we need the opposed
+        # Sorting by indexes id do the trick
+        indexes.sort()
+        model = self.uiQueryResult.model()
+        # Know where we are in the indexes implies to have 2 indexes.
+        # Pop the first index from the list and set it's value in a result list
+        previousIdx = indexes.pop(0)
+        text = model.data(previousIdx, QtCore.Qt.DisplayRole).toString()
+        selectedText = [unicode(text)]
+        for currentIdx in indexes:
+            if currentIdx.row() != previousIdx.row(): # We are on another row in the table : implies new line in the clipboard
+                selectedText.append('\n')
+            else: # else we are on the same line, new index = new column in the table = tab separator
+                selectedText.append('\t')
+            text = model.data(currentIdx, QtCore.Qt.DisplayRole).toString()
+            selectedText.append(unicode(text))
+            previousIdx = currentIdx
+        selectedText = "".join(selectedText)
+        QtGui.QApplication.clipboard().setText(selectedText)
 
     def setupToolBar(self):
         self.uiRunAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/run.png')), '&Run', self)
