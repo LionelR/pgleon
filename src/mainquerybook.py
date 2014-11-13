@@ -30,7 +30,7 @@ class GenericThread(QtCore.QThread):
 
 
 class QueryPage(QueryPageUI):
-    resultSignal = QtCore.pyqtSignal([object, object, object])
+    resultSignal = QtCore.pyqtSignal([object, object, object, object])
 
     def __init__(self, *args, **kwargs):
         self.connection = kwargs.pop("connection")
@@ -70,24 +70,23 @@ class QueryPage(QueryPageUI):
         index = self.parent.indexOf(self)
         self.parent.setPageTitle(index, name)
 
-    def execute(self, prefix=""):
+    def execute(self, prefix="", to_csv=False):
         query = unicode(self.uiQueryEditor.text())
         if query.strip() == "":
             return
         query = prefix + unicode(query)
 
         # Run the query in a thread
-        self.queryThread = GenericThread(self._execute, query)
-        # self.resultSignal.disconnect(self._setResult)
+        self.queryThread = GenericThread(self._execute, query, to_csv)
         self.resultSignal.connect(self._setResult)
         self.queryThread.start()
 
-    def _execute(self, query):
+    def _execute(self, query, to_csv=False):
         """Internal function to be called by the execute function in a thread.
         The results will be passed to the _setResult function"""
         self._preProcessing()  #The thread is started
         headers, res, status = db.execute(self.connection, query)
-        self.resultSignal.emit(headers, res, status)
+        self.resultSignal.emit(headers, res, status, to_csv)
 
     def _checkRunning(self):
         """Change the states of the buttons based on the queryThread"""
@@ -111,20 +110,33 @@ class QueryPage(QueryPageUI):
         self._checkRunning()
         self.timer.stop()
 
-    def _setResult(self, headers, res, status):
+    def _setResult(self, headers, res, status, to_csv):
+
+        def CSVExport(headers, res):
+            import csv
+            with open('/tmp/somefile.csv', 'w') as f:
+                writer = csv.writer(f, delimiter=',')
+                writer.writerow(headers)
+                for row in res:
+                    writer.writerow(row)
+
         if isinstance(res, db.DBError):
             self.uiQueryMsg.setPlainText(QtCore.QString.fromUtf8(res.get_msg()))
             self.uiTab.setCurrentWidget(self.uiQueryMsg)
             self.setStatus('')
         else:
-            self.model = QTableModel(res, headers, self)
-            self.uiQueryResult.setModel(self.model)
-            self.uiQueryResult.resizeColumnsToContents()
-            # self.uiQueryResult.resizeRowsToContents() #Very slow
-            self.uiTab.setCurrentWidget(self.uiQueryResult)
-            self.setStatus(status)
-            self.uiQueryMsg.clear()
+            if to_csv is False:
+                self.model = QTableModel(res, headers, self)
+                self.uiQueryResult.setModel(self.model)
+                self.uiQueryResult.resizeColumnsToContents()
+                # self.uiQueryResult.resizeRowsToContents() #Very slow
+                self.uiTab.setCurrentWidget(self.uiQueryResult)
+                self.setStatus(status)
+                self.uiQueryMsg.clear()
+            else:
+                CSVExport(headers, res)
         self._postProcessing()
+
 
     def onRunQuery(self):
         self.execute()
@@ -183,11 +195,21 @@ class QueryPage(QueryPageUI):
         selectedText = "".join(selectedText)
         QtGui.QApplication.clipboard().setText(selectedText)
 
+    def onCSVExport(self):
+        filename = QtGui.QFileDialog.getSaveFileName(self, 'Export data to CSV file :', selectedFilter='*.csv')
+        if filename:
+            self.execute(to_csv=filename)
+
     def setupToolBar(self):
         self.uiRunAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/run.png')), '&Run', self)
         self.uiRunAction.setShortcut('Ctrl+R')
         self.uiRunAction.setStatusTip('Run query')
         self.uiRunAction.triggered.connect(self.onRunQuery)
+
+        self.uiCSVExportAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/run.png')), '&Run', self)
+        self.uiCSVExportAction.setShortcut('Ctrl+Shift+R')
+        self.uiCSVExportAction.setStatusTip('Export query results')
+        self.uiCSVExportAction.triggered.connect(self.onCSVExport)
 
         self.uiStopAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/stop.png')), '&Stop', self)
         self.uiStopAction.setShortcut('Ctrl+Q')
@@ -221,6 +243,7 @@ class QueryPage(QueryPageUI):
 
         #Toolbar
         self.uiToolBar.addAction(self.uiRunAction)
+        self.uiToolBar.addAction(self.uiCSVExportAction)
         self.uiToolBar.addAction(self.uiStopAction)
         self.uiToolBar.addAction(self.uiExplainAction)
         self.uiToolBar.addAction(self.uiAnalyseAction)
