@@ -38,7 +38,7 @@ class QueryPageUI(QtGui.QWidget):
         uiVBox.addWidget(self.uiToolBar)
         uiVBox.addWidget(self.uiVSplitter)
 
-        uiHBox = QtGui.QHBoxLayout(self)
+        uiHBox = QtGui.QHBoxLayout()
         uiHBox.addWidget(self.uiStatusLabel)
         uiHBox.addStretch()
         uiHBox.addWidget(self.uiTimerLabel)

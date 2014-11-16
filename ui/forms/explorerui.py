@@ -13,7 +13,7 @@ class ExplorerUI(QtGui.QDockWidget):
 
     def initUI(self):
         #toolbar
-        self.uiToolBar = QtGui.QToolBar('Explorer toolbar', parent=self)
+        self.uiToolBar = QtGui.QToolBar('Explorer toolbar', self)
         self.uiToolBar.setIconSize(QtCore.QSize(8, 8))
         # self.uiToolBar.setMovable(False)
         self.uiToolBar.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)

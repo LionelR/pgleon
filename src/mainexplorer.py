@@ -26,10 +26,11 @@ class MainExplorer(ExplorerUI):
         }
 
         self.database = kwargs.pop("database")
+        self.parent = kwargs.pop("parent")
         super(MainExplorer, self).__init__(*args, **kwargs)
         self.rootNode = em.Node(self.database, parent=None, icon=self.icons['DATABASE'])
 
-        self.model = em.ExplorerModel(self.rootNode)
+        self.model = em.ExplorerModel(self.rootNode, self.parent)
         self.view = self.uiExplorerTree
         self.view.setModel(self.model)
 

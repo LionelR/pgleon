@@ -196,6 +196,9 @@ class QueryPage(QueryPageUI):
         QtGui.QApplication.clipboard().setText(selectedText)
 
     def onCSVExport(self):
+        query = unicode(self.uiQueryEditor.text())
+        if query.strip() == "":
+            return
         filename = QtGui.QFileDialog.getSaveFileName(self, 'Export data to CSV file :', selectedFilter='*.csv')
         if filename:
             self.execute(to_csv=filename)
@@ -206,9 +209,10 @@ class QueryPage(QueryPageUI):
         self.uiRunAction.setStatusTip('Run query')
         self.uiRunAction.triggered.connect(self.onRunQuery)
 
-        self.uiCSVExportAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/run.png')), '&Run', self)
+        self.uiCSVExportAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/run.png')), 'Export as CSV', self)
         self.uiCSVExportAction.setShortcut('Ctrl+Shift+R')
-        self.uiCSVExportAction.setStatusTip('Export query results')
+        self.uiCSVExportAction.setStatusTip('Export query results to CSV file')
+        self.uiCSVExportAction.setIconVisibleInMenu(True)
         self.uiCSVExportAction.triggered.connect(self.onCSVExport)
 
         self.uiStopAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/stop.png')), '&Stop', self)
@@ -219,11 +223,13 @@ class QueryPage(QueryPageUI):
         self.uiExplainAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/explain.png')), '&Explain', self)
         self.uiExplainAction.setShortcut('Ctrl+E')
         self.uiExplainAction.setStatusTip('Explain query')
+        self.uiExplainAction.setIconVisibleInMenu(True)
         self.uiExplainAction.triggered.connect(self.onExplainQuery)
 
         self.uiAnalyseAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/analyse.png')), '&Analyse', self)
-        # uiAnalyseAction.setShortcut('Ctrl+A')
+        self.uiAnalyseAction.setShortcut('Ctrl+Shift+E')
         self.uiAnalyseAction.setStatusTip('Analyse query')
+        self.uiAnalyseAction.setIconVisibleInMenu(True)
         self.uiAnalyseAction.triggered.connect(self.onAnalyseQuery)
 
         self.uiRewriteAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/rewrite.png')), 'Rewrite', self)
@@ -242,11 +248,17 @@ class QueryPage(QueryPageUI):
         self.uiSetHorizontalAction.triggered.connect(self.onSetHorizontal)
 
         #Toolbar
+        uiRunMenu = QtGui.QMenu()
+        # uiRunMenu.addAction(self.uiRunAction)
+        uiRunMenu.addAction(self.uiExplainAction)
+        uiRunMenu.addAction(self.uiAnalyseAction)
+        uiRunMenu.addAction(self.uiCSVExportAction)
+        self.uiRunAction.setMenu(uiRunMenu)
         self.uiToolBar.addAction(self.uiRunAction)
-        self.uiToolBar.addAction(self.uiCSVExportAction)
+        # self.uiToolBar.addAction(self.uiExplainAction)
+        # self.uiToolBar.addAction(self.uiAnalyseAction)
+        # self.uiToolBar.addAction(self.uiCSVExportAction)
         self.uiToolBar.addAction(self.uiStopAction)
-        self.uiToolBar.addAction(self.uiExplainAction)
-        self.uiToolBar.addAction(self.uiAnalyseAction)
         self.uiToolBar.addSeparator()
         self.uiToolBar.addAction(self.uiRewriteAction)
         self.uiToolBar.addSeparator()
