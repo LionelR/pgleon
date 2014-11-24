@@ -32,6 +32,7 @@ class Database(object):
                                       database=self.database,
                                       user=self.user,
                                       password=self.password)
+        connection.autocommit = True
         self.connection_list.append(connection)
         return connection
 
@@ -47,7 +48,10 @@ def execute(connection, query, size=None):
     except Exception as e:
         connection.rollback()
         return None, DBError(e.__str__()), None
-    headers = [c[0] for c in cursor.description]
+    if cursor.description is not None:
+        headers = [c[0] for c in cursor.description]
+    else:
+        headers = list()
     res = fetch(cursor, size)
     status = cursor.statusmessage
     cursor.close()

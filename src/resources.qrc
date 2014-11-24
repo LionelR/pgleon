@@ -24,7 +24,7 @@
 <file alias="sequence.png">icons/sequence.png</file>
 <file alias="stop.png">icons/stop.png</file>
 <file alias="vertical.png">icons/vertical.png</file>
-<file alias="database.png">icons/database.png</file>
+<file alias="csv.png">icons/csv.png</file>
 
 </qresource>
 </RCC>

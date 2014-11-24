@@ -48,3 +48,13 @@ class QTableModel(QAbstractTableModel):
         if order == Qt.DescendingOrder:
             self.arraydata.reverse()
         self.emit(SIGNAL("layoutChanged()"))
+
+    def addRow(self, row):
+        # we insert new row at the end of the model
+        nRow = self.rowCount(None)
+        self.beginInsertRows(QModelIndex(), nRow, nRow)
+        self.arraydata.append(row)
+        self.endInsertRows()
+        return True
+
+
