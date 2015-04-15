@@ -70,80 +70,88 @@ class Node(object):
 
 
 class GenericNode(Node):
-    def __init__(self, name, parent=None, icon=None):
-        super(GenericNode, self).__init__(name, parent, icon)
+    def __init__(self, *args, **kwargs):
+        super(GenericNode, self).__init__(*args, **kwargs)
 
     def typeInfo(self):
         return "GENERIC"
 
 
 class SchemaNode(Node):
-    def __init__(self, name, parent=None, icon=None):
-        super(SchemaNode, self).__init__(name, parent, icon)
+    def __init__(self, *args, **kwargs):
+        super(SchemaNode, self).__init__(*args, **kwargs)
 
     def typeInfo(self):
         return "SCHEMA"
 
 
 class TableNode(Node):
-    def __init__(self, name, parent=None, icon=None):
-        super(TableNode, self).__init__(name, parent, icon)
+    def __init__(self, *args, **kwargs):
+        super(TableNode, self).__init__(*args, **kwargs)
 
     def typeInfo(self):
         return "TABLE"
 
 
 class ViewNode(Node):
-    def __init__(self, name, parent=None, icon=None):
-        super(ViewNode, self).__init__(name, parent, icon)
+    def __init__(self, *args, **kwargs):
+        super(ViewNode, self).__init__(*args, **kwargs)
 
     def typeInfo(self):
         return "VIEW"
 
 
+class FunctionNode(Node):
+    def __init__(self, *args, **kwargs):
+        super(FunctionNode, self).__init__(*args, **kwargs)
+
+    def typeInfo(self):
+        return "FUNCTION"
+
+
 class ColumnNode(Node):
-    def __init__(self, name, parent=None, icon=None):
-        super(ColumnNode, self).__init__(name, parent, icon)
+    def __init__(self, *args, **kwargs):
+        super(ColumnNode, self).__init__(*args, **kwargs)
 
     def typeInfo(self):
         return "COLUMN"
 
 
 class IndexNode(Node):
-    def __init__(self, name, parent=None, icon=None):
-        super(IndexNode, self).__init__(name, parent, icon)
+    def __init__(self, *args, **kwargs):
+        super(IndexNode, self).__init__(*args, **kwargs)
 
     def typeInfo(self):
         return "INDEX"
 
 
 class SequenceNode(Node):
-    def __init__(self, name, parent=None, icon=None):
-        super(SequenceNode, self).__init__(name, parent, icon)
+    def __init__(self, *args, **kwargs):
+        super(SequenceNode, self).__init__(*args, **kwargs)
 
     def typeInfo(self):
         return "SEQUENCE"
 
 
-class MaterializedView(Node):
-    def __init__(self, name, parent=None, icon=None):
-        super(MaterializedView, self).__init__(name, parent, icon)
+class MaterializedViewNode(Node):
+    def __init__(self, *args, **kwargs):
+        super(MaterializedViewNode, self).__init__(*args, **kwargs)
 
     def typeInfo(self):
         return "MATERIALIZED VIEW"
 
 
 class ForeignTable(Node):
-    def __init__(self, name, parent=None, icon=None):
-        super(ForeignTable, self).__init__(name, parent, icon)
+    def __init__(self, *args, **kwargs):
+        super(ForeignTable, self).__init__(*args, **kwargs)
 
     def typeInfo(self):
         return "FOREIGN TABLE"
 
 
 class Special(Node):
-    def __init__(self, name, parent=None, icon=None):
-        super(Special, self).__init__(name, parent, icon)
+    def __init__(self, *args, **kwargs):
+        super(Special, self).__init__(*args, **kwargs)
 
     def typeInfo(self):
         return "SPECIAL"

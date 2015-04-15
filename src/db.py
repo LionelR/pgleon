@@ -37,8 +37,7 @@ class Database(object):
         return connection
 
     def close(self):
-        [cursor.close() for cursor in self.connection_list]
-        self.conn.close()
+        [conn.close() for conn in self.connection_list if not conn.closed]
 
 
 def execute(connection, query, size=None):

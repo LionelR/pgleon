@@ -23,6 +23,7 @@ class MainExplorer(ExplorerUI):
             'SPECIAL': QtGui.QIcon(QtGui.QPixmap(':/view.png')),
             'SCHEMA': QtGui.QIcon(QtGui.QPixmap(':/schema.png')),
             'DATABASE': QtGui.QIcon(QtGui.QPixmap(':/database.png')),
+            'FUNCTION': QtGui.QIcon(QtGui.QPixmap(':/function.png')),
         }
 
         self.database = kwargs.pop("database")
@@ -47,28 +48,45 @@ class MainExplorer(ExplorerUI):
         self.view.reset()
         self.model.removeRows(0, self.model.rowCount(QtCore.QModelIndex()))
 
-        query = """SELECT
-            n.nspname as "schema",
-            CASE c.relkind
-                WHEN 'r' THEN 'TABLE'
-                WHEN 'v' THEN 'VIEW'
-                WHEN 'm' THEN 'MATERIALIZED VIEW'
-                WHEN 'i' THEN 'INDEX'
-                WHEN 'S' THEN 'SEQUENCE'
-                WHEN 's' THEN 'SPECIAL'
-                WHEN 'f' THEN 'FOREIGN TABLE'
-            END as "type",
-            c.relname as "name"
-        FROM pg_catalog.pg_class c
-        LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-        WHERE c.relkind IN ('r','v','m','S','f','')
-            --AND n.nspname <> 'pg_catalog'
-            --AND n.nspname <> 'information_schema'
-            --AND n.nspname !~ '^pg_toast'
+        query = """SELECT * FROM ((
+            SELECT
+                n.nspname as "schema",
+                CASE c.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 'i' THEN 'INDEX'
+                    WHEN 'S' THEN 'SEQUENCE'
+                    WHEN 's' THEN 'SPECIAL'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                END as "type",
+                c.relname as "name",
+                c.oid
+            FROM pg_catalog.pg_class c
+            LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+            WHERE c.relkind IN ('r','v','m','S','f','')
+                --AND n.nspname <> 'pg_catalog'
+                --AND n.nspname <> 'information_schema'
+                --AND n.nspname !~ '^pg_toast'
+        )
+        UNION (
+            SELECT
+                n.nspname as schema,
+                'FUNCTION'::varchar as "type",
+                p.proname AS "name",
+                p.oid
+                --p.proargnames as arg_names,
+                --t.typname as return_type,
+                --d.description
+                --pg_get_functiondef(p.oid) as definition
+            FROM pg_catalog.pg_proc p
+            --INNER JOIN pg_catalog.pg_type t ON (p.prorettype=t.oid)
+            --INNER JOIN pg_catalog.pg_description d ON (p.oid=d.objoid)
+            INNER JOIN pg_catalog.pg_namespace n ON (n.oid=p.pronamespace)
+            --WHERE n.nspname='public'
+        )) as t
         ORDER BY 1,2,3"""
-        conn = self.database.newConnection()
-        headers, res, status = db.execute(conn, query)
-        conn.close()
+        headers, res, status = self.getQueryResult(query)
 
         self.view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.view.setUniformRowHeights(True)
@@ -77,7 +95,7 @@ class MainExplorer(ExplorerUI):
         # populate data
         parentSchema = None
         parentType = None
-        for schema, type_, name in res:
+        for schema, type_, name, oid in res:
             if schema != parentSchema:  # On changing/first schema in the list
                 schemaItem = em.SchemaNode(schema, parent=self.rootNode, icon=self.icons['SCHEMA'])
                 parentSchema = schema  # Set the schema name as the parent
@@ -91,8 +109,10 @@ class MainExplorer(ExplorerUI):
                 nameItem = em.SequenceNode(name, typeItem, icon=self.icons["SEQUENCE"])
             if type_ == "VIEW":
                 nameItem = em.ViewNode(name, typeItem, icon=self.icons["VIEW"])
+            if type_ == "FUNCTION":
+                nameItem = em.ViewNode(name, typeItem, icon=self.icons["FUNCTION"])
             if type_ == "MATERIALIZED VIEW":
-                nameItem = em.MaterializedView(name, typeItem, icon=self.icons["MATERIALIZED VIEW"])
+                nameItem = em.MaterializedViewNode(name, typeItem, icon=self.icons["MATERIALIZED VIEW"])
             if type_ == "INDEX":
                 nameItem = em.IndexNode(name, typeItem, icon=self.icons["INDEX"])
             if type_ == "FOREIGN TABLE":
@@ -118,10 +138,8 @@ class MainExplorer(ExplorerUI):
             AND n.nspname = '{0:s}'
             AND c.relname = '{1:s}'
             AND f.attnum > 0
-        ORDER BY f.attnum""".format(schema, table)
-        conn = self.database.newConnection()
-        _, res, _ = db.execute(conn, query)
-        conn.close()
+        ORDER BY f.attnum DESC""".format(schema, table)
+        _, res, _ = self.getQueryResult(query)
         res = [r[0] for r in res]
         return res
 
@@ -149,10 +167,8 @@ class MainExplorer(ExplorerUI):
             AND n.nspname = '{0:s}'
             AND c.relname = '{1:s}'
             AND f.attnum > 0
-        ORDER BY f.attnum DESC""".format(schema, table)
-        conn = self.database.newConnection()
-        _, res, _ = db.execute(conn, query)
-        conn.close()
+        ORDER BY f.attnum ASC""".format(schema, table)
+        _, res, _ = self.getQueryResult(query)
         res = [convert(r[0]) for r in res]
         return res
 
@@ -197,7 +213,7 @@ class MainExplorer(ExplorerUI):
             uiMenu = QtGui.QMenu()
 
             uiQueryLimitAction = QtGui.QAction('SHOW PARTIAL', self)
-            uiQueryLimitAction.setStatusTip('Select all and limit to 500 rows')
+            uiQueryLimitAction.setStatusTip('Select first 500 rows')
             uiQueryLimitAction.triggered.connect(partial(self.onQueryLimit, schemaName, tableName))
             uiMenu.addAction(uiQueryLimitAction)
 
@@ -205,6 +221,11 @@ class MainExplorer(ExplorerUI):
             uiQueryAllAction.setStatusTip('Select all (may be slow...)')
             uiQueryAllAction.triggered.connect(partial(self.onQueryAll, schemaName, tableName))
             uiMenu.addAction(uiQueryAllAction)
+
+            uiEditAction = QtGui.QAction('Definition', self)
+            uiEditAction.setStatusTip('Show the definition of the object')
+            uiEditAction.triggered.connect(partial(self.onEditTable, schemaName, tableName, parentNode.typeInfo()))
+            uiMenu.addAction(uiEditAction)
 
             uiMenu.exec_(globalPos)
 
@@ -230,3 +251,29 @@ class MainExplorer(ExplorerUI):
         page.onRewriteQuery()
         page.setCurrentName(tableName)
         page.onRunQuery()
+
+    def getQueryResult(self, query):
+        conn = self.database.newConnection()
+        headers, res, status = db.execute(conn, query)
+        conn.close()
+        return headers, res, status
+
+    def onEditTable(self, schemaName, tableName, typeInfo):
+        if typeInfo == "TABLE":
+            query = ""
+
+        if typeInfo == "VIEW":
+            query = """SELECT definition
+            FROM pg_views
+            WHERE viewname = '{0}' AND schemaname='{1}'
+            """.format(tableName, schemaName)
+        _, res, _ = self.getQueryResult(query)
+        page = self.nativeParentWidget().newQueryPage()
+        page.uiQueryEditor.setText(res[0][0])
+        page.onRewriteQuery()
+        page.setCurrentName(tableName)
+
+    def onDefineFunction(self, schemaName, functionName, oid):
+        query = """SELECT pg_get_functiondef({0})""".format(oid)
+        _, res, _ = self.getQueryResult(query)
+

@@ -12,7 +12,7 @@ from ui.widgets.qtable import QTableModel
 from src.mainexplorer import MainExplorer
 import sqlparse
 import time
-# import resources_rc
+import resources_rc
 
 
 class GenericThread(QtCore.QThread):
