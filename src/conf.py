@@ -16,7 +16,7 @@ name = "PGLeon"
 version = "0.1"
 
 
-title = "{0:s} - {1:s}".format(name, version)
+title = "{0:s}".format(name)
 
 icon_path = 'icons/pgleon.png'
 

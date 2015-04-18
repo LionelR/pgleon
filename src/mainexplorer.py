@@ -263,7 +263,8 @@ class MainExplorer(ExplorerUI):
             query = ""
 
         if typeInfo == "VIEW":
-            query = """SELECT definition
+            query = """SELECT 'CREATE OR REPLACE VIEW ' || quote_ident(schemaname) || '.'
+            || quote_ident(viewname) || ' AS \n' || definition
             FROM pg_views
             WHERE viewname = '{0}' AND schemaname='{1}'
             """.format(tableName, schemaName)

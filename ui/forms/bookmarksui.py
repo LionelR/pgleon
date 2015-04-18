@@ -3,8 +3,8 @@
 __author__ = 'lionel'
 
 from PyQt4 import QtGui
-from ui.widgets.qscint import QScint
-
+# from ui.widgets.qscint import QScint
+from ui.widgets.editor import QueryEditor
 
 class SaveBookMarksUI(QtGui.QDialog):
     """The bookmarks query dialog UI"""
@@ -107,7 +107,7 @@ class EditBookMarksUI(QtGui.QDialog):
 
         #The query part
         self.uiDescriptionText = QtGui.QLineEdit()
-        self.uiQueryEditor = QScint()
+        self.uiQueryEditor = QueryEditor()
         vBox3 = QtGui.QVBoxLayout()
         vBox3.addWidget(self.uiDescriptionText)
         vBox3.addWidget(self.uiQueryEditor)

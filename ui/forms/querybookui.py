@@ -1,7 +1,7 @@
 #-*- coding:utf-8 -*-
 
 from PyQt4 import QtGui, QtCore
-from ui.widgets.qscint import QScint
+from ui.widgets.editor import QueryEditor
 
 __author__ = 'lionel'
 
@@ -19,7 +19,7 @@ class QueryPageUI(QtGui.QWidget):
         self.uiToolBar.setIconSize(QtCore.QSize(32, 32))
         self.uiToolBar.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Minimum)
 
-        self.uiQueryEditor = QScint(self)
+        self.uiQueryEditor = QueryEditor(self)
         self.uiQueryResult = QtGui.QTableView(self)
         self.uiQueryResult.setAlternatingRowColors(True)
         self.uiQueryMsg = QtGui.QTextEdit(self)

@@ -107,7 +107,7 @@ class QueryPage(QueryPageUI):
         prefix: text to prepend to the text contained in the uiQueryEditor before
         executing it as a query. Normally a word like EXPLAIN or ANALYSE
         """
-        query = unicode(self.uiQueryEditor.text())
+        query = unicode(self.uiQueryEditor.getText())
         if query.strip() == "":
             return
         query = prefix + unicode(query)
@@ -123,7 +123,7 @@ class QueryPage(QueryPageUI):
         Parameters:
         filename: complete path of the resulting CSV file
         """
-        query = unicode(self.uiQueryEditor.text())
+        query = unicode(self.uiQueryEditor.getText())
         if query.strip() == "":
             return
         # Run the query in a thread
@@ -139,7 +139,7 @@ class QueryPage(QueryPageUI):
         mswait: waiting time by cycle, in millisecond
         count: cycle number
         """
-        query = unicode(self.uiQueryEditor.text())
+        query = unicode(self.uiQueryEditor.getText())
         if query.strip() == "":
             return
         # Run the query in a thread
@@ -265,7 +265,7 @@ class QueryPage(QueryPageUI):
         print("Query canceled")
 
     def onRewriteQuery(self):
-        query = unicode(self.uiQueryEditor.text())
+        query = unicode(self.uiQueryEditor.getText())
         formattedQuery = sqlparse.format(query, keyword_case="upper", reindent=True, indent_width=4, indent_tabs=False)
         self.uiQueryEditor.setText(formattedQuery)
 
@@ -277,7 +277,7 @@ class QueryPage(QueryPageUI):
 
     def onTimeOut(self):
         self.time += 1
-        self.uiTimerLabel.setText(str(self.time))
+        self.uiTimerLabel.setText("Time: {0}ms".format(self.time))
 
     def onCopySelectedResults(self):
         """Copy the selected datas (entire rows selections) from the queryResult table
@@ -308,7 +308,7 @@ class QueryPage(QueryPageUI):
         QtGui.QApplication.clipboard().setText(selectedText)
 
     def onCSVExport(self):
-        query = unicode(self.uiQueryEditor.text())
+        query = unicode(self.uiQueryEditor.getText())
         if query.strip() == "":
             return
         filename = QtGui.QFileDialog.getSaveFileName(self, 'Export data to CSV file :', selectedFilter='*.csv')
@@ -316,7 +316,7 @@ class QueryPage(QueryPageUI):
             self.executeToCSV(filename)
 
     def onMonitor(self):
-        query = unicode(self.uiQueryEditor.text())
+        query = unicode(self.uiQueryEditor.getText())
         if query.strip() == "":
             return
         self.executePeriodically(mswait=1, count=3)
