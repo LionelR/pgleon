@@ -1,24 +1,20 @@
 #-*- coding:utf-8 -*-
 
-__author__ = 'lionel'
 
 """
 PGLeon.src.conf
-Gestion de la partie configuration de pgleon.
+PGLeon Configurator and configuration database access
 """
 
 import os
 import sys
-from peewee import SqliteDatabase, Model, CharField, ForeignKeyField, BooleanField, TextField
+from peewee import SqliteDatabase, Model, CharField, ForeignKeyField, TextField, BooleanField
 
 
 name = "PGLeon"
 version = "0.1"
-
-
-title = "{0:s}".format(name)
-
-icon_path = 'icons/pgleon.png'
+title = name
+appIcon = ':/pgleon.png'
 
 
 def localFolder():
@@ -39,7 +35,7 @@ dbPath = os.path.join(localFolder(), dbName)
 confDB = SqliteDatabase(dbPath)
 
 
-class Connection(Model):
+class DBConfig(Model):
     host = CharField(null=True)
     port = CharField(null=True)
     database = CharField(null=True)
@@ -51,65 +47,50 @@ class Connection(Model):
         database = confDB
 
 
-class Section(Model):
-    connection = ForeignKeyField(Connection, related_name='sections')
-    name = CharField(null=False)
-
-    class Meta:
-        database = confDB
-
-
-class Query(Model):
+class Bookmark(Model):
     """Queries for one database connection"""
-    section = ForeignKeyField(Section, related_name='queries')
+    keyword = CharField()
     name = CharField(null=False)
-    description = CharField()
+    isglobal = BooleanField(default=False)
+    connection = ForeignKeyField(DBConfig, null=True)
     query = TextField(null=False)
 
     class Meta:
         database = confDB
 
 
-class GlobalQuery(Model):
-    """Queries for all databases"""
-    name = CharField(null=False)
-    description = CharField()
-    query = TextField(null=False)
-
-    class Meta:
-        database = confDB
-
-
-Connection.create_table(True)
-Section.create_table(True)
-Query.create_table(True)
-GlobalQuery.create_table(True)
+DBConfig.create_table(True)
+Bookmark.create_table(True)
 
 
 
 def fixtures():
     """Create defaults items"""
-    qList = [["Tables list", "List tables except system ones",
-              """SELECT table_name
+    qList = [["Table", "Tables list", True,
+              """--List tables except system ones
+SELECT table_name
 FROM information_schema.tables
 WHERE table_type = 'BASE TABLE'
 AND table_schema NOT IN ('pg_catalog', 'information_schema');"""],
-             ["All tables list", "List all tables, including system tables",
-              """SELECT table_name
+             ["Table", "All tables list", True,
+              """--List all tables, including system tables
+SELECT table_name
 FROM information_schema.tables
 WHERE table_type = 'BASE TABLE';"""],
-             ["Views list", "List views except system ones",
-              """SELECT table_name
+             ["View", "Views list", True,
+              """--List views except system ones
+SELECT table_name
 FROM information_schema.views
 WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
 AND table_name !~ '^pg_';"""],
-             ["All views list", "List all views, including system views",
-              """SELECT table_name
+             ["View", "All views list", True,
+              """--List all views, including system views
+SELECT table_name
 FROM information_schema.views;"""]
     ]
-    if GlobalQuery.select().count() == 0:
-        for name, desc, query in qList:
-            sql = GlobalQuery(name=name, description=desc, query=query)
+    if Bookmark.select().count() == 0:
+        for keyword, name, isglobal, query in qList:
+            sql = Bookmark(keyword=keyword, name=name, isglobal=isglobal, query=query)
             sql.save()
 
 fixtures()

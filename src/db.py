@@ -1,4 +1,3 @@
-__author__ = 'lionel'
 
 import psycopg2
 import psycopg2.extensions

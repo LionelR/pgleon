@@ -4,7 +4,6 @@ from functools import partial
 from src.conf import Query, GlobalQuery, Section
 from ui.forms.bookmarksui import EditBookMarksUI, SaveBookMarksUI
 
-__author__ = 'lionel'
 
 GLOBALID = "-999"
 
@@ -61,7 +60,6 @@ class SaveBookMarks(SaveBookMarksUI):
         model = QtGui.QStandardItemModel(0, 5, self)
         row = self.uiSectionOldCombo.currentIndex()
         section_id = self.sectionModel.item(row, 0).text()
-        print(section_id)
         ngrows = 0
         #Globals queries
         if section_id == GLOBALID:

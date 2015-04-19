@@ -3,8 +3,9 @@ from PyQt4 import QtCore
 # Source : PyQt4 Model View Tutorial by Yasin Uludag on Youtube
 
 class Node(object):
-    def __init__(self, name, parent=None, icon=None):
+    def __init__(self, name, oid=None, parent=None, icon=None):
         self._name = name
+        self._oid = oid
         self._children = []
         self._parent = parent
         self._icon = icon
@@ -141,20 +142,41 @@ class MaterializedViewNode(Node):
         return "MATERIALIZED VIEW"
 
 
-class ForeignTable(Node):
+class ForeignTableNode(Node):
     def __init__(self, *args, **kwargs):
-        super(ForeignTable, self).__init__(*args, **kwargs)
+        super(ForeignTableNode, self).__init__(*args, **kwargs)
 
     def typeInfo(self):
         return "FOREIGN TABLE"
 
 
-class Special(Node):
+class SpecialNode(Node):
     def __init__(self, *args, **kwargs):
-        super(Special, self).__init__(*args, **kwargs)
+        super(SpecialNode, self).__init__(*args, **kwargs)
 
     def typeInfo(self):
         return "SPECIAL"
+
+
+class BookMarkNode(Node):
+    def __init__(self, *args, **kwargs):
+        self._query = kwargs.pop('query')
+        self._isglobal = kwargs.pop('isglobal')
+        super(BookMarkNode, self).__init__(*args, **kwargs)
+
+    def query(self):
+        return self._query
+
+    def typeInfo(self):
+        return "BOOKMARK"
+
+
+class KeyWordNode(Node):
+    def __init__(self, *args, **kwargs):
+        super(KeyWordNode, self).__init__(*args, **kwargs)
+
+    def typeInfo(self):
+        return "KEYWORD"
 
 
 class ExplorerModel(QtCore.QAbstractItemModel):

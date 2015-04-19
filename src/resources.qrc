@@ -26,6 +26,8 @@
 <file alias="vertical.png">icons/vertical.png</file>
 <file alias="csv.png">icons/csv.png</file>
 <file alias="function.png">icons/function.png</file>
+<file alias="global_bookmark.png">icons/global_bookmark.png</file>
+<file alias="specific_bookmark.png">icons/specific_bookmark.png</file>
 
 </qresource>
 </RCC>

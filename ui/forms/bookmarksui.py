@@ -1,10 +1,10 @@
 #-*- coding:utf-8 -*-
 
-__author__ = 'lionel'
-
 from PyQt4 import QtGui
 # from ui.widgets.qscint import QScint
 from ui.widgets.editor import QueryEditor
+
+
 
 class SaveBookMarksUI(QtGui.QDialog):
     """The bookmarks query dialog UI"""
@@ -120,3 +120,5 @@ class EditBookMarksUI(QtGui.QDialog):
         hBox3.addWidget(groupBox2)
         hBox3.addWidget(groupBox3)
         self.setLayout(hBox3)
+
+

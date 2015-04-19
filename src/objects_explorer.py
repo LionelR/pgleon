@@ -2,16 +2,20 @@
 
 from PyQt4 import QtGui, QtCore
 from ui.forms.explorerui import ExplorerUI
+import explorer_model as em
 from src import db
-import explorermodel as em
 import string
 from functools import partial
 
-__author__ = 'lionel'
 
-
-class MainExplorer(ExplorerUI):
+class ObjectsExplorer(ExplorerUI):
     def __init__(self, *args, **kwargs):
+
+        self.database = kwargs.pop("database")
+        self.parent = kwargs["parent"]
+        super(ObjectsExplorer, self).__init__(*args, **kwargs)
+        self.setName('Database Objects')
+
         self.icons = {
             'COLUMN': QtGui.QIcon(QtGui.QPixmap(':/column.png')),
             'TABLE': QtGui.QIcon(QtGui.QPixmap(':/table.png')),
@@ -22,17 +26,30 @@ class MainExplorer(ExplorerUI):
             'FOREIGN TABLE': QtGui.QIcon(QtGui.QPixmap(':/foreign_table.png')),
             'SPECIAL': QtGui.QIcon(QtGui.QPixmap(':/view.png')),
             'SCHEMA': QtGui.QIcon(QtGui.QPixmap(':/schema.png')),
-            'DATABASE': QtGui.QIcon(QtGui.QPixmap(':/database.png')),
             'FUNCTION': QtGui.QIcon(QtGui.QPixmap(':/function.png')),
+            'DATABASE': QtGui.QIcon(QtGui.QPixmap(':/database.png')),
         }
 
-        self.database = kwargs.pop("database")
-        self.parent = kwargs.pop("parent")
-        super(MainExplorer, self).__init__(*args, **kwargs)
+        self.nodes = {
+            'COLUMN': em.ColumnNode,
+            'TABLE': em.TableNode,
+            'VIEW': em.ViewNode,
+            'INDEX': em.IndexNode,
+            'SEQUENCE': em.SequenceNode,
+            'MATERIALIZED VIEW': em.MaterializedViewNode,
+            'FOREIGN TABLE': em.ForeignTableNode,
+            'SPECIAL': em.SpecialNode,
+            'SCHEMA': em.SchemaNode,
+            'FUNCTION': em.FunctionNode,
+        }
+
         self.rootNode = em.Node(self.database, parent=None, icon=self.icons['DATABASE'])
 
         self.model = em.ExplorerModel(self.rootNode, self.parent)
         self.view = self.uiExplorerTree
+        self.view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+        self.view.setUniformRowHeights(True)
+        self.view.setAnimated(True)
         self.view.setModel(self.model)
 
         self.setupExplorer()
@@ -88,10 +105,6 @@ class MainExplorer(ExplorerUI):
         ORDER BY 1,2,3"""
         headers, res, status = self.getQueryResult(query)
 
-        self.view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-        self.view.setUniformRowHeights(True)
-        self.view.setAnimated(True)
-
         # populate data
         parentSchema = None
         parentType = None
@@ -101,29 +114,11 @@ class MainExplorer(ExplorerUI):
                 parentSchema = schema  # Set the schema name as the parent
                 parentType = None  # Reset the type
             if type_ != parentType:  # On changing/first type in the list
-                parentType = type_  # Set the type as the parent type
                 typeItem = em.GenericNode(type_, parent=schemaItem, icon=self.icons[type_])
-            if type_ == "TABLE":
-                nameItem = em.TableNode(name, typeItem, icon=self.icons["TABLE"])
-            if type_ == "SEQUENCE":
-                nameItem = em.SequenceNode(name, typeItem, icon=self.icons["SEQUENCE"])
-            if type_ == "VIEW":
-                nameItem = em.ViewNode(name, typeItem, icon=self.icons["VIEW"])
-            if type_ == "FUNCTION":
-                nameItem = em.ViewNode(name, typeItem, icon=self.icons["FUNCTION"])
-            if type_ == "MATERIALIZED VIEW":
-                nameItem = em.MaterializedViewNode(name, typeItem, icon=self.icons["MATERIALIZED VIEW"])
-            if type_ == "INDEX":
-                nameItem = em.IndexNode(name, typeItem, icon=self.icons["INDEX"])
-            if type_ == "FOREIGN TABLE":
-                nameItem = em.ForeignTable(name, typeItem, icon=self.icons["FOREIGN TABLE"])
-            if type_ == "SPECIAL":
-                nameItem = em.Special(name, typeItem, icon=self.icons["SPECIAL"])
+                parentType = type_  # Set the type as the parent type
+            elif type_ in self.nodes.keys():
+                self.nodes[type_](name, oid=oid, parent=typeItem, icon=self.icons[type_])
 
-                # if type_ in ('tables', 'views', 'materialized views'):
-                #     for colName in self.getColumnsNamesAndDesc(schema, name):
-                #         colNameItem = QtGui.QStandardItem(self.icons['columns'], colName[0])
-                #         nameItem.appendRow(colNameItem)
 
     def getColumnsNamesAndDesc(self, schema, table):
         """Returns columns names list with extra information (primary key * and type)"""
@@ -212,17 +207,17 @@ class MainExplorer(ExplorerUI):
 
             uiMenu = QtGui.QMenu()
 
-            uiQueryLimitAction = QtGui.QAction('SHOW PARTIAL', self)
+            uiQueryLimitAction = QtGui.QAction('Partial', self)
             uiQueryLimitAction.setStatusTip('Select first 500 rows')
             uiQueryLimitAction.triggered.connect(partial(self.onQueryLimit, schemaName, tableName))
             uiMenu.addAction(uiQueryLimitAction)
 
-            uiQueryAllAction = QtGui.QAction('SHOW ALL', self)
-            uiQueryAllAction.setStatusTip('Select all (may be slow...)')
+            uiQueryAllAction = QtGui.QAction('All', self)
+            uiQueryAllAction.setStatusTip('Select all rows (may be slow...)')
             uiQueryAllAction.triggered.connect(partial(self.onQueryAll, schemaName, tableName))
             uiMenu.addAction(uiQueryAllAction)
 
-            uiEditAction = QtGui.QAction('Definition', self)
+            uiEditAction = QtGui.QAction('Show definition', self)
             uiEditAction.setStatusTip('Show the definition of the object')
             uiEditAction.triggered.connect(partial(self.onEditTable, schemaName, tableName, parentNode.typeInfo()))
             uiMenu.addAction(uiEditAction)
@@ -269,6 +264,7 @@ class MainExplorer(ExplorerUI):
             WHERE viewname = '{0}' AND schemaname='{1}'
             """.format(tableName, schemaName)
         _, res, _ = self.getQueryResult(query)
+        # print(res)
         page = self.nativeParentWidget().newQueryPage()
         page.uiQueryEditor.setText(res[0][0])
         page.onRewriteQuery()
