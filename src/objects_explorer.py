@@ -45,7 +45,7 @@ class ObjectsExplorer(ExplorerUI):
 
         self.rootNode = em.Node(self.database, parent=None, icon=self.icons['DATABASE'])
 
-        self.model = em.ExplorerModel(self.rootNode, self.parent)
+        self.model = em.ExplorerModel(self.rootNode, self.parent, "Database")
         self.view = self.uiExplorerTree
         self.view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.view.setUniformRowHeights(True)
@@ -123,7 +123,7 @@ class ObjectsExplorer(ExplorerUI):
     def getColumnsNamesAndDesc(self, schema, table):
         """Returns columns names list with extra information (primary key * and type)"""
         query = """SELECT
-        concat(f.attname, CASE WHEN p.contype = 'p' THEN '*' ELSE '' END, ' ('::varchar, pg_catalog.format_type(f.atttypid,f.atttypmod), ')'::varchar) AS name
+        concat(f.attname, CASE WHEN p.contype = 'p' THEN '*' ELSE '' END, ' ('::varchar, pg_catalog.format_type(f.atttypid, f.atttypmod), ')'::varchar) AS name
         FROM pg_attribute f
         JOIN pg_class c ON c.oid = f.attrelid
         LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -133,6 +133,7 @@ class ObjectsExplorer(ExplorerUI):
             AND n.nspname = '{0:s}'
             AND c.relname = '{1:s}'
             AND f.attnum > 0
+            AND f.attisdropped IS FALSE
         ORDER BY f.attnum DESC""".format(schema, table)
         _, res, _ = self.getQueryResult(query)
         res = [r[0] for r in res]
@@ -162,6 +163,7 @@ class ObjectsExplorer(ExplorerUI):
             AND n.nspname = '{0:s}'
             AND c.relname = '{1:s}'
             AND f.attnum > 0
+            AND f.attisdropped IS FALSE
         ORDER BY f.attnum ASC""".format(schema, table)
         _, res, _ = self.getQueryResult(query)
         res = [convert(r[0]) for r in res]

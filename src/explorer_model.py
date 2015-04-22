@@ -180,11 +180,12 @@ class KeyWordNode(Node):
 
 
 class ExplorerModel(QtCore.QAbstractItemModel):
-    def __init__(self, root, parent=None):
+    def __init__(self, root, parent=None, headerData="Database"):
         """INPUTS: Node, QObject"""
 
         super(ExplorerModel, self).__init__(parent)
         self._rootNode = root
+        self._headerData = headerData
 
     def rowCount(self, parent):
         """
@@ -235,7 +236,7 @@ class ExplorerModel(QtCore.QAbstractItemModel):
         """
         if role == QtCore.Qt.DisplayRole:
             if section == 0:
-                return "Database"
+                return self._headerData
             else:
                 return "Typeinfo"
 
@@ -257,7 +258,6 @@ class ExplorerModel(QtCore.QAbstractItemModel):
         if parentNode == self._rootNode:
             return QtCore.QModelIndex()
         return self.createIndex(parentNode.row(), 0, parentNode)
-
 
     def index(self, row, column, parent):
         """
@@ -301,7 +301,8 @@ class ExplorerModel(QtCore.QAbstractItemModel):
         """INPUTS: int, int, QModelIndex"""
         parentNode = self.getNode(parent)
         success = False
-        if parentNode.typeInfo() in ("TABLE", "VIEW", "MATERIALIZED VIEW") and len(columns) > 0:
+        # if parentNode.typeInfo() in ("TABLE", "VIEW", "MATERIALIZED VIEW") and len(columns) > 0:
+        if len(columns) > 0:
             self.beginInsertRows(parent, position, position + len(columns) - 1)
             for column in columns:
                 # childCount = parentNode.childCount()

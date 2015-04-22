@@ -19,9 +19,9 @@ class BookMarksExplorer(ExplorerUI):
             'DATABASE': QtGui.QIcon(QtGui.QPixmap(':/database.png')),
         }
 
-        self.rootNode = em.Node(self.database, parent=None, icon=self.icons['DATABASE'])
+        self.rootNode = em.Node("", parent=None, icon=self.icons['DATABASE'])
 
-        self.model = em.ExplorerModel(self.rootNode, self.parent)
+        self.model = em.ExplorerModel(self.rootNode, self.parent, "Bookmark")
         self.view = self.uiExplorerTree
         self.view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.view.setUniformRowHeights(True)
@@ -31,7 +31,7 @@ class BookMarksExplorer(ExplorerUI):
         self.setupExplorer()
         self.setupToolBar()
 
-        #Signals
+        # Signals
         self.view.doubleClicked.connect(self.onDoubleClick)
         self.view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.view.customContextMenuRequested.connect(self.onContextMenu)
@@ -58,23 +58,16 @@ class BookMarksExplorer(ExplorerUI):
         globalBookmarks = Bookmark.select().where(Bookmark.isglobal == True)
         if globalBookmarks.count() > 0:
             parentItem = em.GenericNode("Globals queries", parent=self.rootNode, icon=self.icons["GLOBAL"])
-            keywordItemDict = {}
             for bmk in globalBookmarks:
-                if bmk.keyword not in keywordItemDict.keys():
-                    keywordItemDict[bmk.keyword] = em.KeyWordNode(bmk.keyword, parent=parentItem, icon=None)
                 em.BookMarkNode(bmk.name, oid=bmk.id, query=bmk.query, isglobal=True,
-                               parent=keywordItemDict[bmk.keyword], icon=self.icons['GLOBAL'])
+                                parent=parentItem, icon=self.icons['GLOBAL'])
 
         specificBookmarks = Bookmark.select().where(Bookmark.isglobal == False)
         if specificBookmarks.count() > 0:
             parentItem = em.GenericNode("Specific queries", parent=self.rootNode, icon=self.icons["SPECIFIC"])
-            keywordItemDict = {}
             for bmk in specificBookmarks:
-                if bmk.keyword not in keywordItemDict.keys():
-                    keywordItemDict[bmk.keyword] = em.KeyWordNode(bmk.keyword, parent=parentItem, icon=None)
                 em.BookMarkNode(bmk.name, oid=bmk.id, query=bmk.query, isglobal=False,
-                               parent=keywordItemDict[bmk.keyword], icon=self.icons['SPECIFIC'])
-
+                                parent=parentItem, icon=self.icons['SPECIFIC'])
 
     def onDoubleClick(self, index):
         parentNode = self.model.getNode(index)

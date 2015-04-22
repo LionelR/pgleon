@@ -49,10 +49,10 @@ class DBConfig(Model):
 
 class Bookmark(Model):
     """Queries for one database connection"""
-    keyword = CharField()
+    keyword = CharField(null=True)
     name = CharField(null=False)
     isglobal = BooleanField(default=False)
-    connection = ForeignKeyField(DBConfig, null=True)
+    dbconfig = ForeignKeyField(DBConfig, null=True)
     query = TextField(null=False)
 
     class Meta:
@@ -66,31 +66,31 @@ Bookmark.create_table(True)
 
 def fixtures():
     """Create defaults items"""
-    qList = [["Table", "Tables list", True,
+    qList = [["Tables list", True,
               """--List tables except system ones
 SELECT table_name
 FROM information_schema.tables
 WHERE table_type = 'BASE TABLE'
 AND table_schema NOT IN ('pg_catalog', 'information_schema');"""],
-             ["Table", "All tables list", True,
+             ["All tables list", True,
               """--List all tables, including system tables
 SELECT table_name
 FROM information_schema.tables
 WHERE table_type = 'BASE TABLE';"""],
-             ["View", "Views list", True,
+             ["Views list", True,
               """--List views except system ones
 SELECT table_name
 FROM information_schema.views
 WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
 AND table_name !~ '^pg_';"""],
-             ["View", "All views list", True,
+             ["All views list", True,
               """--List all views, including system views
 SELECT table_name
 FROM information_schema.views;"""]
     ]
     if Bookmark.select().count() == 0:
-        for keyword, name, isglobal, query in qList:
-            sql = Bookmark(keyword=keyword, name=name, isglobal=isglobal, query=query)
+        for name, isglobal, query in qList:
+            sql = Bookmark(name=name, isglobal=isglobal, query=query)
             sql.save()
 
 fixtures()

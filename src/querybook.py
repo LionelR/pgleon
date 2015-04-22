@@ -1,4 +1,4 @@
-#-*- coding:utf-8 -*-
+# -*- coding:utf-8 -*-
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 import sys
@@ -6,10 +6,13 @@ import sys
 __author__ = 'lionel'
 
 from src import db
+from PyQt4 import QtGui
 from ui.forms.querybookui import QueryBookUI, QueryPageUI
+from ui.forms.bookmarksui import SaveAsBookmarDialog
 from ui.widgets.qtable import QTableModel
 from src.objects_explorer import ObjectsExplorer
 from src.bookmarks_explorer import BookMarksExplorer
+from src.conf import DBConfig, Bookmark
 import sqlparse
 import time
 import resources_rc
@@ -63,8 +66,9 @@ class QueryPage(QueryPageUI):
     resultSignal = QtCore.pyqtSignal([object, object, object])
 
     def __init__(self, *args, **kwargs):
-        self.connection = kwargs.pop("connection")
+        self.database = kwargs.pop("database")
         self.parent = kwargs.pop("parent")
+        self.connection = self.database.newConnection()
         self.name = ""
         self.queryThread = None
         self.model = None
@@ -72,7 +76,7 @@ class QueryPage(QueryPageUI):
 
         # Query result tableView
         fontSize = self.uiQueryResult.verticalHeader().font().pointSize()
-        self.uiQueryResult.verticalHeader().setDefaultSectionSize(fontSize + 2 * 3)
+        self.uiQueryResult.verticalHeader().setDefaultSectionSize(fontSize + 6)
         self.uiQueryResult.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.uiQueryResult.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 
@@ -82,12 +86,12 @@ class QueryPage(QueryPageUI):
         copyAction.triggered.connect(self.onCopySelectedResults)
         self.addAction(copyAction)
 
-        #Timer
+        # Timer
         self.time = 0
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.onTimeOut)
 
-        #Toolbar
+        # Toolbar
         self.setupToolBar()
 
     def currentConnection(self):
@@ -107,7 +111,7 @@ class QueryPage(QueryPageUI):
         prefix: text to prepend to the text contained in the uiQueryEditor before
         executing it as a query. Normally a word like EXPLAIN or ANALYSE
         """
-        query = unicode(self.uiQueryEditor.getText())
+        query = self.currentQuery()
         if query.strip() == "":
             return
         query = prefix + unicode(query)
@@ -123,7 +127,7 @@ class QueryPage(QueryPageUI):
         Parameters:
         filename: complete path of the resulting CSV file
         """
-        query = unicode(self.uiQueryEditor.getText())
+        query = self.currentQuery()
         if query.strip() == "":
             return
         # Run the query in a thread
@@ -139,7 +143,7 @@ class QueryPage(QueryPageUI):
         mswait: waiting time by cycle, in millisecond
         count: cycle number
         """
-        query = unicode(self.uiQueryEditor.getText())
+        query = self.currentQuery()
         if query.strip() == "":
             return
         # Run the query in a thread
@@ -201,7 +205,7 @@ class QueryPage(QueryPageUI):
             self.uiTab.setCurrentWidget(self.uiQueryResult)
             self.setStatus(status)
             self.uiQueryMsg.clear()
-        # self._postProcessing()
+            # self._postProcessing()
 
     def _setResultToCSV(self, headers, res, status):
         """Export the result in a CSV file, or write to uiQueryMsg if error
@@ -217,13 +221,14 @@ class QueryPage(QueryPageUI):
             self.setStatus('')
         else:
             import csv
+
             with open(self.filename, 'w') as f:
                 writer = csv.writer(f, delimiter=',')
                 writer.writerow(headers)
                 for row in res:
                     writer.writerow(row)
-            self.setStatus('Export to %s OK'%self.filename)
-        # self._postProcessing()
+            self.setStatus('Export to %s OK' % self.filename)
+            # self._postProcessing()
 
     def _appendResult(self, headers, res, status):
         """Append the result in the uiQueryResult table, or in uiQueryMsg if error
@@ -238,10 +243,10 @@ class QueryPage(QueryPageUI):
             self.setStatus('')
         else:
             print(res)
-            if self.model is None: #First iteration, we create the model at set it to the view
+            if self.model is None:  # First iteration, we create the model at set it to the view
                 self.model = QTableModel(res, headers, self)
                 self.uiQueryResult.setModel(self.model)
-            else:  #...else we just have to append rows
+            else:  # ...else we just have to append rows
                 self.model.addRow(res[0])
             self.uiQueryResult.resizeColumnsToContents()
             # self.uiQueryResult.resizeRowsToContents() #Very slow
@@ -259,13 +264,11 @@ class QueryPage(QueryPageUI):
         self.execute(prefix=u"EXPLAIN ANALYSE ")
 
     def onCancelQuery(self):
-        print("Canceling query")
         self.connection.cancel()
         self.queryThread.quit()
-        print("Query canceled")
 
     def onRewriteQuery(self):
-        query = unicode(self.uiQueryEditor.getText())
+        query = self.currentQuery()
         formattedQuery = sqlparse.format(query, keyword_case="upper", reindent=True, indent_width=4, indent_tabs=False)
         self.uiQueryEditor.setText(formattedQuery)
 
@@ -297,9 +300,9 @@ class QueryPage(QueryPageUI):
         text = model.data(previousIdx, QtCore.Qt.DisplayRole).toString()
         selectedText = [unicode(text)]
         for currentIdx in indexes:
-            if currentIdx.row() != previousIdx.row(): # We are on another row in the table : implies new line in the clipboard
+            if currentIdx.row() != previousIdx.row():  # We are on another row in the table : implies new line in the clipboard
                 selectedText.append('\n')
-            else: # else we are on the same line, new index = new column in the table = tab separator
+            else:  # else we are on the same line, new index = new column in the table = tab separator
                 selectedText.append('\t')
             text = model.data(currentIdx, QtCore.Qt.DisplayRole).toString()
             selectedText.append(unicode(text))
@@ -307,8 +310,12 @@ class QueryPage(QueryPageUI):
         selectedText = "".join(selectedText)
         QtGui.QApplication.clipboard().setText(selectedText)
 
-    def onCSVExport(self):
+    def currentQuery(self):
         query = unicode(self.uiQueryEditor.getText())
+        return query
+
+    def onExportToCSV(self):
+        query = self.currentQuery()
         if query.strip() == "":
             return
         filename = QtGui.QFileDialog.getSaveFileName(self, 'Export data to CSV file :', selectedFilter='*.csv')
@@ -316,10 +323,41 @@ class QueryPage(QueryPageUI):
             self.executeToCSV(filename)
 
     def onMonitor(self):
-        query = unicode(self.uiQueryEditor.getText())
+        query = self.currentQuery()
         if query.strip() == "":
             return
         self.executePeriodically(mswait=1, count=3)
+
+    def onSaveAsBookmark(self):
+        name, isGlobal, ok = SaveAsBookmarDialog.getParams()
+        if isGlobal:
+            if Bookmark.select().where(Bookmark.name == name, Bookmark.isglobal == isGlobal).exists():
+                overwrite = QtGui.QMessageBoxquestion(self, 'Overwrite',
+                                                      "A global bookmark with the same name already exists. Overwrite it?",
+                                                      QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
+                                                      QtGui.QMessageBox.No)
+                if overwrite == QtGui.QMessageBox.Yes:
+                    Bookmark.update(query=self.currentQuery()).where(Bookmark.name == name,
+                                                                     Bookmark.isglobal == isGlobal)
+            else:
+                newBookmark = Bookmark(name=name, isglobal=isGlobal, query=self.currentQuery(), dbconfig=None)
+                newBookmark.save()
+        else:
+            dbconfig = DBConfig.get(DBConfig.id == self.database.id)
+            if Bookmark.select().where(Bookmark.name == name, Bookmark.isglobal == isGlobal,
+                                       Bookmark.dbconfig == dbconfig).exists():
+                overwrite = QtGui.QMessageBoxquestion(self, 'Overwrite',
+                                                      "A bookmark for this specific database connection with the same name already exists. Overwrite it?",
+                                                      QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
+                                                      QtGui.QMessageBox.No)
+                if overwrite == QtGui.QMessageBox.Yes:
+                    Bookmark.update(query=self.currentQuery()).where(Bookmark.name == name,
+                                                                     Bookmark.isglobal == isGlobal,
+                                                                     Bookmark.dbconfig == dbconfig)
+            else:
+                newBookmark = Bookmark(name=name, isglobal=isGlobal, query=self.currentQuery(), dbconfig=dbconfig)
+                newBookmark.save()
+
 
     def setupToolBar(self):
         self.uiRunAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/run.png')), '&Run', self)
@@ -331,7 +369,7 @@ class QueryPage(QueryPageUI):
         self.uiCSVExportAction.setShortcut('Ctrl+Shift+R')
         self.uiCSVExportAction.setStatusTip('Export query results to CSV file')
         self.uiCSVExportAction.setIconVisibleInMenu(True)
-        self.uiCSVExportAction.triggered.connect(self.onCSVExport)
+        self.uiCSVExportAction.triggered.connect(self.onExportToCSV)
 
         self.uiStopAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/stop.png')), '&Stop', self)
         self.uiStopAction.setShortcut('Ctrl+Q')
@@ -365,12 +403,18 @@ class QueryPage(QueryPageUI):
         self.uiSetHorizontalAction.setStatusTip('Set the query page horizontally')
         self.uiSetHorizontalAction.triggered.connect(self.onSetHorizontal)
 
-        self.uiMonitorAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/run.png')), 'Monitor', self)
-        self.uiMonitorAction.setShortcut('Ctrl+M')
-        self.uiMonitorAction.setStatusTip('Monitor the query result and plot it')
-        self.uiMonitorAction.triggered.connect(self.onMonitor)
+        # self.uiMonitorAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/run.png')), 'Monitor', self)
+        # self.uiMonitorAction.setShortcut('Ctrl+M')
+        # self.uiMonitorAction.setStatusTip('Monitor the query result and plot it')
+        # self.uiMonitorAction.triggered.connect(self.onMonitor)
 
-        #Toolbar
+        self.uiSaveAsBookmarkAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/star.png')), '&Bookmark this query',
+                                                    self)
+        self.uiSaveAsBookmarkAction.setShortcut('Ctrl+B')
+        self.uiSaveAsBookmarkAction.setStatusTip('Bookmark the current query for later access')
+        self.uiSaveAsBookmarkAction.triggered.connect(self.onSaveAsBookmark)
+
+        # Toolbar
         uiRunMenu = QtGui.QMenu()
         uiRunMenu.addAction(self.uiExplainAction)
         uiRunMenu.addAction(self.uiAnalyseAction)
@@ -383,12 +427,16 @@ class QueryPage(QueryPageUI):
         self.uiToolBar.addSeparator()
         self.uiToolBar.addAction(self.uiSetHorizontalAction)
         self.uiToolBar.addAction(self.uiSetVerticalAction)
-        self.uiToolBar.addAction(self.uiMonitorAction)
+        self.uiToolBar.addSeparator()
+        self.uiToolBar.addAction(self.uiSaveAsBookmarkAction)
+
+        # self.uiToolBar.addAction(self.uiMonitorAction)
 
 
 class QueryBook(QueryBookUI):
     """Main Window after a successful database connection
     """
+
     def __init__(self, database, icon):
         super(QueryBook, self).__init__()
         self.database = database
@@ -402,14 +450,14 @@ class QueryBook(QueryBookUI):
         self.pageCount = 0
         self.newQueryPage()
 
-        #Explorers
+        # Explorers
         self.setupObjectsExplorer()
         self.setupBookMarksExplorer()
 
-        #Menubar
+        # Menubar
         self.setupMenuBar()
 
-        #Signals
+        # Signals
         self.uiQueryBook.tabCloseRequested.connect(self.onClosePage)
 
         #Window position and size
@@ -422,7 +470,7 @@ class QueryBook(QueryBookUI):
     def newQueryPage(self):
         """Add a new query page to the book"""
         name = "Query_%i" % self._pageCount()
-        page = QueryPage(connection=self.database.newConnection(), parent=self)
+        page = QueryPage(database=self.database, parent=self)
         self.uiQueryBook.addTab(page, name)
         self.uiQueryBook.setCurrentWidget(page)
         return page
@@ -445,9 +493,9 @@ class QueryBook(QueryBookUI):
         del page
 
     # def onSaveBookMarks(self):
-    #     page = self.uiQueryBook.currentWidget()
-    #     query = page.uiQueryEditor.text()
-    #     dlg = SaveBookMarks(database=self.database, query=query)
+    # page = self.uiQueryBook.currentWidget()
+    # query = page.uiQueryEditor.text()
+    # dlg = SaveBookMarks(database=self.database, query=query)
     #     result = dlg.exec_()
     #     if result == QtGui.QDialog.Accepted:
     #         self.uiShowBookMarksMenu.clear()
@@ -473,31 +521,19 @@ class QueryBook(QueryBookUI):
         self.uiExitAction.triggered.connect(self.close)
         self.uiFileMenu.addAction(self.uiExitAction)
 
-        # self.uiQueryMenu = self.uiMenuBar.addMenu('&Query')
-        # self.uiNewAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/plus.png')), '&New', self)
-        # self.uiNewAction.setShortcut('Ctrl+N')
-        # self.uiNewAction.setStatusTip('New query')
-        # self.uiNewAction.triggered.connect(self.newQueryPage)
-        # self.uiQueryMenu.addAction(self.uiNewAction)
-        # self.uiSaveBookMarksAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/star.png')), '&Save', self)
-        # self.uiSaveBookMarksAction.setShortcut('Ctrl+D')
-        # self.uiSaveBookMarksAction.setStatusTip('Save as bookmark')
-        # self.uiSaveBookMarksAction.triggered.connect(self.onSaveBookMarks)
-        # self.uiQueryMenu.addAction(self.uiSaveBookMarksAction)
-        # # self.uiShowBookMarksButton = QtGui.QToolButton()
-        # # self.uiShowBookMarksButton.setIcon(QtGui.QIcon('icons/bookmarks.png'))
-        # # self.uiShowBookMarksButton.setStatusTip('Show all bookmarks')
-        # # self.uiShowBookMarksButton.setPopupMode(QtGui.QToolButton.InstantPopup)
-        # # self.uiShowBookMarksButton.setMenu(self.uiShowBookMarksMenu)
-        # self.uiShowBookMarksMenu = ShowBookMarks('Bookmarks', database=self.database, parent=self)
-        # self.uiQueryMenu.addMenu(self.uiShowBookMarksMenu)
+        self.uiNewAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/plus.png')), '&New', self)
+        self.uiNewAction.setShortcut('Ctrl+N')
+        self.uiNewAction.setStatusTip('New query')
+        self.uiNewAction.triggered.connect(self.newQueryPage)
+        self.uiFileMenu.addAction(self.uiNewAction)
 
         self.uiWindowMenu = self.uiMenuBar.addMenu('&Window')
-        self.uiToggleDockExplorerTreeAction = self.objectsExplorer.toggleViewAction()
-        self.uiWindowMenu.addAction(self.uiToggleDockExplorerTreeAction)
+        self.uiToggleDockObjectExplorerAction = self.objectsExplorer.toggleViewAction()
+        self.uiWindowMenu.addAction(self.uiToggleDockObjectExplorerAction)
+        self.uiToggleDockBookmarkExplorerAction = self.bookmarksExplorer.toggleViewAction()
+        self.uiWindowMenu.addAction(self.uiToggleDockBookmarkExplorerAction)
 
     def closeEvent(self, event):
-        print('close')
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.setValue("windowState", self.saveState())
         event.accept()
