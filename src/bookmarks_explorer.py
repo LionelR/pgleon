@@ -4,6 +4,7 @@ from PyQt4 import QtGui, QtCore
 from src.conf import Bookmark
 from ui.forms.explorerui import ExplorerUI
 import explorer_model as em
+from functools import partial
 
 
 class BookMarksExplorer(ExplorerUI):
@@ -78,8 +79,24 @@ class BookMarksExplorer(ExplorerUI):
             page.setCurrentName(parentNode.name())
             page.onRunQuery()
 
-    def onContextMenu(self):
-        pass
+    def onContextMenu(self, point):
+        index = self.view.indexAt(point)
+        parentNode = self.model.getNode(index)
+        globalPos = self.view.mapToGlobal(point)
+        if isinstance(parentNode, em.BookMarkNode):
+            uiMenu = QtGui.QMenu()
+
+            uiQueryLimitAction = QtGui.QAction('Remove', self)
+            uiQueryLimitAction.setStatusTip('Remove this bookmark')
+            uiQueryLimitAction.triggered.connect(partial(self.onDeleteBookmark, parentNode))
+            uiMenu.addAction(uiQueryLimitAction)
+
+            uiMenu.exec_(globalPos)
+
+    def onDeleteBookmark(self, parentNode):
+        q = Bookmark.delete().where(Bookmark.id==parentNode._oid)
+        q.execute()
+        self.onRefresh()
 
     def addPage(self, query, name):
         page = self.parent.newQueryPage()

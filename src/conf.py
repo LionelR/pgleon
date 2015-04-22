@@ -10,6 +10,8 @@ import os
 import sys
 from peewee import SqliteDatabase, Model, CharField, ForeignKeyField, TextField, BooleanField
 
+import logging
+logger = logging.getLogger(__name__)
 
 name = "PGLeon"
 version = "0.1"
@@ -25,14 +27,19 @@ def localFolder():
         lf = os.path.join(os.path.expanduser('~'), u'.%s'%name.lower())
     if not os.path.exists(lf):
         os.makedirs(lf)
-        print("%s created"%lf)
+        logger.info("Configuration directory created under: %s"%lf)
     return lf
 
 
-dbName = "pgleon.db"
+dbName = "%s.db"%name.lower()
 dbPath = os.path.join(localFolder(), dbName)
 # os.remove(dbPath)
-confDB = SqliteDatabase(dbPath)
+try:
+    confDB = SqliteDatabase(dbPath)
+    logger.info("Configuration database accessible")
+except Exception, err:
+    logger.error("Configuration database not accessible: %s"%err)
+    sys.exit(1)
 
 
 class DBConfig(Model):
@@ -92,6 +99,7 @@ FROM information_schema.views;"""]
         for name, isglobal, query in qList:
             sql = Bookmark(name=name, isglobal=isglobal, query=query)
             sql.save()
+            logger.info("Fixtures inserted in database")
 
 fixtures()
 

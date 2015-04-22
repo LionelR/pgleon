@@ -1,4 +1,38 @@
-#-*- coding:utf-8 -*-
+# -*- coding:utf-8 -*-
+
+import logging
+import logging.config
+logger = logging.getLogger(__name__)
+# logger.setLevel(logging.DEBUG)
+# handler = logging.StreamHandler()
+# handler.setLevel(logging.DEBUG)
+# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# handler.setFormatter(formatter)
+# logger.addHandler(handler)
+logging.config.dictConfig({
+    'version': 1,
+    'disable_existing_loggers': False,  # this fixes the problem
+
+    'formatters': {
+        'standard': {
+            'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+        },
+    },
+    'handlers': {
+        'default': {
+            'level':'INFO',
+            'class':'logging.StreamHandler',
+            'formatter': 'standard'
+        },
+    },
+    'loggers': {
+        '': {
+            'handlers': ['default'],
+            'level': 'INFO',
+            'propagate': True
+        }
+    }
+})
 
 import sys
 from PyQt4 import QtGui
@@ -7,9 +41,7 @@ from src.conf import DBConfig, title, appIcon
 from src.db import Database
 from src.querybook import QueryBook
 
-
 TEMPID = "-999"
-
 
 class Main(MainUI):
     def __init__(self, title, appIcon):
@@ -136,14 +168,14 @@ class Main(MainUI):
         id, name, host, port, database, user, password = self.rowData(row)
         if id == TEMPID:  # we are in append mode, then we create a new connection
             query = DBConfig.create(name=name, host=host, port=port,
-                                      database=database, user=user,
-                                      password=password)
+                                    database=database, user=user,
+                                    password=password)
             query.save()
             self.model.item(index.row(), 0).setText(str(query.id))
         else:  # we are in edit mode
             query = DBConfig.update(name=name, host=host, port=port,
-                                      database=database, user=user,
-                                      password=password).where(DBConfig.id == id)
+                                    database=database, user=user,
+                                    password=password).where(DBConfig.id == id)
             query.execute()
         self.editMode(False)
 
@@ -227,9 +259,9 @@ class Main(MainUI):
             self.uiEditButton.setEnabled(False)
 
 
-
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
     ex = Main(title=title, appIcon=appIcon)
     ex.show()
+    logger.info("%s started"%title)
     sys.exit(app.exec_())

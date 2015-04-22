@@ -1,12 +1,11 @@
 # -*- coding:utf-8 -*-
-from PyQt4 import QtGui
-from PyQt4 import QtCore
+
+import logging
+logger = logging.getLogger(__name__)
+
 import sys
-
-__author__ = 'lionel'
-
 from src import db
-from PyQt4 import QtGui
+from PyQt4 import QtGui, QtCore
 from ui.forms.querybookui import QueryBookUI, QueryPageUI
 from ui.forms.bookmarksui import SaveAsBookmarDialog
 from ui.widgets.qtable import QTableModel
@@ -330,15 +329,20 @@ class QueryPage(QueryPageUI):
 
     def onSaveAsBookmark(self):
         name, isGlobal, ok = SaveAsBookmarDialog.getParams()
+        if name=="":
+            return
+
         if isGlobal:
             if Bookmark.select().where(Bookmark.name == name, Bookmark.isglobal == isGlobal).exists():
-                overwrite = QtGui.QMessageBoxquestion(self, 'Overwrite',
+                overwrite = QtGui.QMessageBox.question(self, 'Overwrite',
                                                       "A global bookmark with the same name already exists. Overwrite it?",
                                                       QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
                                                       QtGui.QMessageBox.No)
                 if overwrite == QtGui.QMessageBox.Yes:
-                    Bookmark.update(query=self.currentQuery()).where(Bookmark.name == name,
+                    logger.info('Overwriting global bookmark')
+                    q = Bookmark.update(query=self.currentQuery()).where(Bookmark.name == name,
                                                                      Bookmark.isglobal == isGlobal)
+                    q.execute()
             else:
                 newBookmark = Bookmark(name=name, isglobal=isGlobal, query=self.currentQuery(), dbconfig=None)
                 newBookmark.save()
@@ -346,17 +350,20 @@ class QueryPage(QueryPageUI):
             dbconfig = DBConfig.get(DBConfig.id == self.database.id)
             if Bookmark.select().where(Bookmark.name == name, Bookmark.isglobal == isGlobal,
                                        Bookmark.dbconfig == dbconfig).exists():
-                overwrite = QtGui.QMessageBoxquestion(self, 'Overwrite',
+                overwrite = QtGui.QMessageBox.question(self, 'Overwrite',
                                                       "A bookmark for this specific database connection with the same name already exists. Overwrite it?",
                                                       QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
                                                       QtGui.QMessageBox.No)
                 if overwrite == QtGui.QMessageBox.Yes:
-                    Bookmark.update(query=self.currentQuery()).where(Bookmark.name == name,
+                    logger.info('Overwriting specific bookmark')
+                    q = Bookmark.update(query=self.currentQuery()).where(Bookmark.name == name,
                                                                      Bookmark.isglobal == isGlobal,
                                                                      Bookmark.dbconfig == dbconfig)
+                    q.execute()
             else:
                 newBookmark = Bookmark(name=name, isglobal=isGlobal, query=self.currentQuery(), dbconfig=dbconfig)
                 newBookmark.save()
+
 
 
     def setupToolBar(self):
