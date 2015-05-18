@@ -187,32 +187,45 @@ class SqlHighlighter(QtGui.QSyntaxHighlighter):
 
 class SqlCompleter(QtGui.QCompleter):
     def __init__(self, parent):
-        # # get the wordlist
-        # dictionary = None
-        # if db:
-        # dictionary = db.connector.getSqlDictionary()
-        # if not dictionary:
-        # # use the generic sql dictionary
-        # from .sql_dictionary import getSqlDictionary
-
-        dictionary = getSqlDictionary()
-
-        wordlist = QtCore.QStringList()
-        for name, value in dictionary.iteritems():
-            wordlist << value
+        # dictionary = getSqlDictionary()
+        # wordlist = QtCore.QStringList()
+        # for name, value in dictionary.iteritems():
+        #     wordlist << value
 
         # setup the completer
-        QtGui.QCompleter.__init__(self, sorted(wordlist), parent)
+        super(SqlCompleter, self).__init__(parent)
+        # QtGui.QCompleter.__init__(self, parent)
         self.setModelSorting(QtGui.QCompleter.CaseInsensitivelySortedModel)
-        self.setWrapAround(False)
+        self.setWrapAround(True)
         self.setWidget(parent)
         self.setCompletionMode(QtGui.QCompleter.PopupCompletion)
         self.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
+    def separator(self):
+        return '.'
+
+    def splitPath(self, path):
+        return path.split('.')
+
+    def pathFromIndex(self, index):
+        result = []
+        while index.isValid():
+            result = [self.model().data(index, QtCore.Qt.DisplayRole)] + result
+            index = index.parent()
+        r = '.'.join(result)
+        return r
+
+    def setModel(self, model):
+        # Append model from database objects explorer
+        super(SqlCompleter, self).setModel(model)
+        # self.setCompletionColumn(0)
+        self.setCompletionRole(QtCore.Qt.DisplayRole)
+
 
 class QueryEditor(QtGui.QTextEdit):
     def __init__(self, *args, **kwargs):
-        QtGui.QTextEdit.__init__(self, *args, **kwargs)
+        super(QueryEditor, self).__init__(*args, **kwargs)
+        # QtGui.QTextEdit.__init__(self, *args, **kwargs)
         self.completer = SqlCompleter(self)
         self.highlighter = SqlHighlighter(self)
 
@@ -275,6 +288,9 @@ class QueryEditor(QtGui.QTextEdit):
         cr.setWidth(self.completer.popup().sizeHintForColumn(0)
                     + self.completer.popup().verticalScrollBar().sizeHint().width())
         self.completer.complete(cr)  # popup it up!
+
+    def setCompletionModel(self, model):
+        self.completer.setModel(model)
 
     def getText(self):
         return self.toPlainText()

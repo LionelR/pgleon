@@ -1,5 +1,8 @@
 # -*- coding:utf-8 -*-
 
+import logging
+logger = logging.getLogger(__name__)
+
 from PyQt4 import QtGui, QtCore
 from src.conf import Bookmark
 from ui.forms.explorerui import ExplorerUI
@@ -44,7 +47,14 @@ class BookMarksExplorer(ExplorerUI):
         self.uiExpandAction.triggered.connect(self.onExpand)
 
     def onRefresh(self):
+        logger.info("Refreshing bookmarks")
+        indexList = [self.model.index(i, 0, QtCore.QModelIndex()) for i in range(self.model.rowCount(QtCore.QModelIndex()))]
+        isExpandedDict = {i: self.view.isExpanded(i) for i in indexList}
+        print(isExpandedDict)
         self.setupExplorer()
+        self.view.setUpdatesEnabled(False)
+        _ = [self.view.setExpanded(i, isExpandedDict[i]) for i in indexList]
+        self.view.setUpdatesEnabled(True)
 
     def onCollapse(self):
         self.uiExplorerTree.collapseAll()
