@@ -2,7 +2,11 @@
 
 __author__ = 'lionel'
 
+import logging
+logger = logging.getLogger(__name__)
 from PyQt4 import QtGui, QtCore, Qsci
+import explorer_model as em
+from src import db
 # from qutepart import Qutepart
 # from PyQt4.Qsci import QsciScintilla, QsciLexerSQL  # , QsciLexerPython
 
@@ -185,24 +189,101 @@ class SqlHighlighter(QtGui.QSyntaxHighlighter):
             index = self.multiLineCommentStart.indexIn(text, index + comment_length)
 
 
+class CompletionModel(em.ExplorerModel):
+    def __init__(self, parent, database):
+        self.database = database
+        self.parent = parent
+
+        self.icons = {
+            'COLUMN': QtGui.QIcon(QtGui.QPixmap(':/column.png')),
+            'TABLE': QtGui.QIcon(QtGui.QPixmap(':/table.png')),
+            'VIEW': QtGui.QIcon(QtGui.QPixmap(':/view.png')),
+            'INDEX': QtGui.QIcon(QtGui.QPixmap(':/index.png')),
+            'SEQUENCE': QtGui.QIcon(QtGui.QPixmap(':/sequence.png')),
+            'MATERIALIZED VIEW': QtGui.QIcon(QtGui.QPixmap(':/materialized_view.png')),
+            'FOREIGN TABLE': QtGui.QIcon(QtGui.QPixmap(':/foreign_table.png')),
+            'SPECIAL': QtGui.QIcon(QtGui.QPixmap(':/view.png')),
+            'SCHEMA': QtGui.QIcon(QtGui.QPixmap(':/schema.png')),
+            'FUNCTION': QtGui.QIcon(QtGui.QPixmap(':/function.png')),
+            'DATABASE': QtGui.QIcon(QtGui.QPixmap(':/database.png')),
+        }
+
+        self.nodes = {
+            'COLUMN': em.ColumnNode,
+            'TABLE': em.TableNode,
+            'VIEW': em.ViewNode,
+            'INDEX': em.IndexNode,
+            'SEQUENCE': em.SequenceNode,
+            'MATERIALIZED VIEW': em.MaterializedViewNode,
+            'FOREIGN TABLE': em.ForeignTableNode,
+            'SPECIAL': em.SpecialNode,
+            'SCHEMA': em.SchemaNode,
+            'FUNCTION': em.FunctionNode,
+        }
+
+        super(CompletionModel, self).__init__(None, self.parent, "Database Model")
+        self._rootNode = em.Node(self.database, parent=None, icon=self.icons['DATABASE'])
+        self.setupModel()
+
+    def getQueryResult(self, query):
+        conn = self.database.newConnection()
+        headers, res, status = db.execute(conn, query)
+        conn.close()
+        return headers, res, status
+
+    def setupModel(self):
+        # self.removeRows(0, self.rowCount(QtCore.QModelIndex()))
+
+        query = """SELECT * FROM ((
+            SELECT
+                n.nspname as "schema",
+                CASE c.relkind
+                    WHEN 'r' THEN 'TABLE'
+                    WHEN 'v' THEN 'VIEW'
+                    WHEN 'm' THEN 'MATERIALIZED VIEW'
+                    WHEN 'i' THEN 'INDEX'
+                    WHEN 'S' THEN 'SEQUENCE'
+                    WHEN 's' THEN 'SPECIAL'
+                    WHEN 'f' THEN 'FOREIGN TABLE'
+                END as "type",
+                c.relname as "name",
+                c.oid
+            FROM pg_catalog.pg_class c
+            LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+            WHERE c.relkind IN ('r','v','m')
+                --AND n.nspname <> 'pg_catalog'
+                --AND n.nspname <> 'information_schema'
+                --AND n.nspname !~ '^pg_toast'
+        )
+        ) as t
+        ORDER BY 1,2,3"""
+        headers, res, status = self.getQueryResult(query)
+
+        # populate data
+        parentSchema = None
+        for schema, type_, name, oid in res:
+            if schema != parentSchema:  # On changing/first schema in the list
+                schemaItem = em.SchemaNode(schema, parent=self._rootNode, icon=self.icons['SCHEMA'])
+                parentSchema = schema  # Set the schema name as the parent
+            if type_ in self.nodes.keys():
+                self.nodes[type_](name, oid=oid, parent=schemaItem, icon=self.icons[type_])
+
+
 class SqlCompleter(QtGui.QCompleter):
-    def __init__(self, parent):
+    def __init__(self, *args):
         # dictionary = getSqlDictionary()
         # wordlist = QtCore.QStringList()
         # for name, value in dictionary.iteritems():
         #     wordlist << value
 
         # setup the completer
-        super(SqlCompleter, self).__init__(parent)
-        # QtGui.QCompleter.__init__(self, parent)
+        super(SqlCompleter, self).__init__(*args)
         self.setModelSorting(QtGui.QCompleter.CaseInsensitivelySortedModel)
         self.setWrapAround(True)
-        self.setWidget(parent)
         self.setCompletionMode(QtGui.QCompleter.PopupCompletion)
         self.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
-
-    def separator(self):
-        return '.'
+        self.setCompletionColumn(0)
+        self.setCompletionRole(QtCore.Qt.DisplayRole)
 
     def splitPath(self, path):
         return path.split('.')
@@ -218,15 +299,16 @@ class SqlCompleter(QtGui.QCompleter):
     def setModel(self, model):
         # Append model from database objects explorer
         super(SqlCompleter, self).setModel(model)
-        # self.setCompletionColumn(0)
-        self.setCompletionRole(QtCore.Qt.DisplayRole)
 
 
-class QueryEditor(QtGui.QTextEdit):
+class QueryEditor(QtGui.QPlainTextEdit):
+    """from http://doc.qt.digia.com/4.6/tools-customcompleter.html
+    and QGiS dbmanager plugin"""
     def __init__(self, *args, **kwargs):
         super(QueryEditor, self).__init__(*args, **kwargs)
         # QtGui.QTextEdit.__init__(self, *args, **kwargs)
-        self.completer = SqlCompleter(self)
+        self.completer = SqlCompleter()
+        self.completer.setWidget(self)
         self.highlighter = SqlHighlighter(self)
 
         self.connect(self.completer, QtCore.SIGNAL("activated(const QString&)"), self.insertCompletion)
@@ -240,14 +322,22 @@ class QueryEditor(QtGui.QTextEdit):
         self.setTextCursor(tc)
 
     def textUnderCursor(self):
+        # Hack for searching the word under the cursor because WordUnderCursor doesn't take
+        # care of dots, but we need them
         tc = self.textCursor()
-        tc.select(QtGui.QTextCursor.WordUnderCursor)
-        return tc.selectedText()
+        isStartOfWord = False
+        while not isStartOfWord:
+            tc.movePosition(QtGui.QTextCursor.PreviousCharacter, QtGui.QTextCursor.KeepAnchor)
+            if tc.atStart():
+                isStartOfWord = True
+            elif QtCore.QChar(tc.selectedText()[0]).isSpace():
+                isStartOfWord = True
+        return tc.selectedText().trimmed()
 
     def focusInEvent(self, event):
         if self.completer:
             self.completer.setWidget(self)
-        QtGui.QTextEdit.focusInEvent(self, event)
+        QtGui.QPlainTextEdit.focusInEvent(self, event)
 
     def keyPressEvent(self, event):
         if self.completer and self.completer.popup().isVisible():
@@ -256,11 +346,10 @@ class QueryEditor(QtGui.QTextEdit):
                 event.ignore()
                 return
 
-        # has ctrl-E or ctrl-space been pressed??
-        isShortcut = event.modifiers() == QtCore.Qt.ControlModifier and event.key() in (
-            QtCore.Qt.Key_E, QtCore.Qt.Key_Space)
+        # has ctrl-space been pressed??
+        isShortcut = event.modifiers() == QtCore.Qt.ControlModifier and event.key() == QtCore.Qt.Key_Space
         if not self.completer or not isShortcut:
-            QtGui.QTextEdit.keyPressEvent(self, event)
+            QtGui.QPlainTextEdit.keyPressEvent(self, event)
 
         # ctrl or shift key on it's own??
         ctrlOrShift = event.modifiers() in (QtCore.Qt.ControlModifier, QtCore.Qt.ShiftModifier)
@@ -268,14 +357,14 @@ class QueryEditor(QtGui.QTextEdit):
             # ctrl or shift key on it's own
             return
 
-        eow = QtCore.QString("~!@#$%^&*()+{}|:\"<>?,./;'[]\\-=")  # end of word
+        eow = QtCore.QString("~!@#$%^&*()+{}|:\"<>?,/;'[]\\-=")  # end of word
 
         hasModifier = event.modifiers() != QtCore.Qt.NoModifier and not ctrlOrShift
 
         completionPrefix = self.textUnderCursor()
 
         if not isShortcut and (hasModifier or event.text().isEmpty() or
-                                       completionPrefix.length() < 3 or eow.contains(event.text().right(1))):
+                                       completionPrefix.length() < 2 or eow.contains(event.text().right(1))):
             self.completer.popup().hide()
             return
 
@@ -289,8 +378,10 @@ class QueryEditor(QtGui.QTextEdit):
                     + self.completer.popup().verticalScrollBar().sizeHint().width())
         self.completer.complete(cr)  # popup it up!
 
-    def setCompletionModel(self, model):
+    def setCompletionModel(self, database):
+        model = CompletionModel(database=database, parent=self)
         self.completer.setModel(model)
+
 
     def getText(self):
         return self.toPlainText()

@@ -94,7 +94,7 @@ class QueryPage(QueryPageUI):
         self.setupToolBar()
 
         # Set autocompletion data from database objects
-        self.uiQueryEditor.setCompletionModel(self.parent.objectsExplorer.model)
+        self.uiQueryEditor.setCompletionModel(self.database)
 
     def currentConnection(self):
         return self.connection
@@ -366,48 +366,6 @@ class QueryPage(QueryPageUI):
             else:
                 newBookmark = Bookmark(name=name, isglobal=isGlobal, query=self.currentQuery(), dbconfig=dbconfig)
                 newBookmark.save()
-
-    def getCompletionData(self):
-        """
-        Facility function to update API from a database connection
-
-        """
-
-        query = """SELECT * FROM ((
-            SELECT
-                n.nspname as "schema",
-                CASE c.relkind
-                    WHEN 'r' THEN 'TABLE'
-                    WHEN 'v' THEN 'VIEW'
-                    WHEN 'm' THEN 'MATERIALIZED VIEW'
-                    WHEN 'f' THEN 'FOREIGN TABLE'
-                END as "type",
-                c.relname as "name",
-                c.oid
-            FROM pg_catalog.pg_class c
-            LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-            WHERE c.relkind IN ('r','v','m','f')
-        )
-
-        ) as t
-        ORDER BY 1,2,3"""
-        conn = self.database.newConnection()
-        headers, res, status = db.execute(conn, query)
-        conn.close()
-
-        # populate data
-        data = list()
-        schemaList = list()
-        objectsList = list()
-        for schema, type_, name, oid in res:
-            objectsList.append("%s.%s"%(schema, name))
-            if schema not in schemaList:
-                schemaList.append(schema)
-        data.extend(schemaList)
-        data.extend(objectsList)
-
-        # logger.info(data)
-        return data
 
     def setupToolBar(self):
         self.uiRunAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/run.png')), '&Run', self)
