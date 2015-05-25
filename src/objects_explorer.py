@@ -3,7 +3,6 @@
 from PyQt4 import QtGui, QtCore
 from ui.forms.explorerui import ExplorerUI
 import explorer_model as em
-from src import db
 import string
 from functools import partial
 
@@ -60,7 +59,6 @@ class ObjectsExplorer(ExplorerUI):
         self.view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.view.customContextMenuRequested.connect(self.onContextMenu)
 
-
     def setupExplorer(self):
         self.view.reset()
         self.model.removeRows(0, self.model.rowCount(QtCore.QModelIndex()))
@@ -103,7 +101,7 @@ class ObjectsExplorer(ExplorerUI):
             --WHERE n.nspname='public'
         )) as t
         ORDER BY 1,2,3"""
-        headers, res, status = self.getQueryResult(query)
+        headers, res, status = self.database.execute(query)
 
         # populate data
         parentSchema = None
@@ -116,8 +114,13 @@ class ObjectsExplorer(ExplorerUI):
             if type_ != parentType:  # On changing/first type in the list
                 typeItem = em.GenericNode(type_, parent=schemaItem, icon=self.icons[type_])
                 parentType = type_  # Set the type as the parent type
-            elif type_ in self.nodes.keys():
-                self.nodes[type_](name, oid=oid, parent=typeItem, icon=self.icons[type_])
+            if type_ in self.nodes.keys():
+                nodeItem = self.nodes[type_](name, oid=oid, parent=typeItem, icon=self.icons[type_])
+                # # Too slow
+                # if type_ in ['TABLE', 'VIEW', 'MATERIALIZED VIEW']:
+                #     columns = self.getColumnsNames(parentSchema, name)
+                #     for col in columns:
+                #         self.nodes['COLUMN'](col, oid=None, parent=nodeItem, icon=self.icons['COLUMN'])
 
 
     def getColumnsNamesAndDesc(self, schema, table):
@@ -135,7 +138,7 @@ class ObjectsExplorer(ExplorerUI):
             AND f.attnum > 0
             AND f.attisdropped IS FALSE
         ORDER BY f.attnum DESC""".format(schema, table)
-        _, res, _ = self.getQueryResult(query)
+        _, res, _ = self.database.execute(query)
         res = [r[0] for r in res]
         return res
 
@@ -165,7 +168,7 @@ class ObjectsExplorer(ExplorerUI):
             AND f.attnum > 0
             AND f.attisdropped IS FALSE
         ORDER BY f.attnum ASC""".format(schema, table)
-        _, res, _ = self.getQueryResult(query)
+        _, res, _ = self.database.execute(query)
         res = [convert(r[0]) for r in res]
         return res
 
@@ -193,12 +196,75 @@ class ObjectsExplorer(ExplorerUI):
     def onDoubleClick(self, index):
         parentNode = self.model.getNode(index)
         if parentNode.typeInfo() in ("TABLE", "VIEW", "MATERIALIZED VIEW"):
+            modifiers = QtGui.QApplication.queryKeyboardModifiers()
+            # Ctrl modifier == Set standard DML to the editor
+            if modifiers == QtCore.Qt.ControlModifier:
+                self.showSelectQuery(index)
+            # Ctrl+Shift modifiers == Set standard DML to the editor and run the query, with a limited amount of rows
+            elif modifiers == (QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier):
+                self.showAndRunSelectQuery(index, limit=1000)
+            # Ctrl+Shift+Alt modifiers == Set standard DML to the editor and run the query, without rows limit
+            elif modifiers == (QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier | QtCore.Qt.AltModifier):
+                self.showAndRunSelectQuery(index, limit=None)
+            # No modifier == show columns info
+            elif modifiers == QtCore.Qt.NoModifier:
+                self.showColumns(index)
+            else:
+                pass
+
+    def showColumns(self, index):
+        """
+        Show/Append columns informations to the Node
+        :param index: Node's index in the tree
+        :return:
+        """
+        parentNode = self.model.getNode(index)
+        if parentNode.typeInfo() in ("TABLE", "VIEW", "MATERIALIZED VIEW"):
             childCount = parentNode.childCount()
             if childCount > 0:
                 self.model.removeRows(0, childCount, index)
             schemaName, tableName = self.getNames(index)
             columns = self.getColumnsNamesAndDesc(schemaName, tableName)
             self.model.insertColumnNames(0, columns, index)
+
+    def showSelectQuery(self, index):
+        """
+        Set the standard DML SELECT * FROM TABLE in the editor
+        :param index: Node's index in the tree
+        :return:
+        """
+        schemaName, tableName = self.getNames(index)
+        columns = self.getColumnsNames(schemaName, tableName)
+        query = """SELECT {0:s}
+        FROM "{1:s}"."{2:s}"
+        """.format(','.join(columns), schemaName, tableName)
+        page = self.nativeParentWidget().newQueryPage()
+        page.uiQueryEditor.setText(query)
+        page.onRewriteQuery()
+        page.setCurrentName(tableName)
+
+    def showAndRunSelectQuery(self, index, limit=None):
+        """
+        Set the standard DML SELECT * FROM TABLE in the editor and run it
+        :param index: Node's index in the tree
+        :param limit: amount of rows to return. None = no limit
+        :return:
+        """
+        schemaName, tableName = self.getNames(index)
+        columns = self.getColumnsNames(schemaName, tableName)
+        if limit is not None:
+            limit = " LIMIT %i"%limit
+        else:
+            limit = ''
+        query = """SELECT {0:s}
+        FROM "{1:s}"."{2:s}"
+        {3:s}""".format(','.join(columns), schemaName, tableName, limit)
+        page = self.nativeParentWidget().newQueryPage()
+        page.uiQueryEditor.setText(query)
+        page.onRewriteQuery()
+        page.setCurrentName(tableName)
+        page.onRunQuery()
+
 
     def onContextMenu(self, point):
         index = self.view.indexAt(point)
@@ -231,7 +297,7 @@ class ObjectsExplorer(ExplorerUI):
         columns = self.getColumnsNames(schemaName, tableName)
         query = """SELECT {0:s}
         FROM "{1:s}"."{2:s}"
-        LIMIT 500""".format(','.join(columns), schemaName, tableName)
+        LIMIT 1000""".format(','.join(columns), schemaName, tableName)
         page = self.nativeParentWidget().newQueryPage()
         page.uiQueryEditor.setText(query)
         page.onRewriteQuery()
@@ -249,12 +315,6 @@ class ObjectsExplorer(ExplorerUI):
         page.setCurrentName(tableName)
         page.onRunQuery()
 
-    def getQueryResult(self, query):
-        conn = self.database.newConnection()
-        headers, res, status = db.execute(conn, query)
-        conn.close()
-        return headers, res, status
-
     def onEditTable(self, schemaName, tableName, typeInfo):
         if typeInfo == "TABLE":
             query = ""
@@ -265,7 +325,7 @@ class ObjectsExplorer(ExplorerUI):
             FROM pg_views
             WHERE viewname = '{0}' AND schemaname='{1}'
             """.format(tableName, schemaName)
-        _, res, _ = self.getQueryResult(query)
+        _, res, _ = self.database.execute(query)
         # print(res)
         page = self.nativeParentWidget().newQueryPage()
         page.uiQueryEditor.setText(res[0][0])

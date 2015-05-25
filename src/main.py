@@ -261,6 +261,10 @@ class Main(MainUI):
 
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
+    # f = open('stylesheet.css')
+    # l = f.readlines()
+    # f.close()
+    # app.setStyleSheet(''.join(l))
     ex = Main(title=title, appIcon=appIcon)
     ex.show()
     logger.info("%s started"%title)

@@ -157,7 +157,7 @@ class QueryPage(QueryPageUI):
     def _execute(self, query):
         """Internal function to be called in a thread.
         The results will be emitted via the resultSignal signal"""
-        headers, res, status = db.execute(self.connection, query)
+        headers, res, status = self.database.execute(query, self.connection)
         self.resultSignal.emit(headers, res, status)
 
     def _checkRunning(self):

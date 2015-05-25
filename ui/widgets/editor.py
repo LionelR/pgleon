@@ -2,191 +2,123 @@
 
 __author__ = 'lionel'
 
+"""
+Largely inspired by
+http://doc.qt.digia.com/4.6/tools-customcompleter.html
+https://john.nachtimwald.com/2009/08/19/better-qplaintextedit-with-line-numbers/
+and the QGiS dbmanager plugin and
+"""
+
 import logging
 logger = logging.getLogger(__name__)
-from PyQt4 import QtGui, QtCore, Qsci
-import explorer_model as em
-from src import db
-# from qutepart import Qutepart
-# from PyQt4.Qsci import QsciScintilla, QsciLexerSQL  # , QsciLexerPython
 
-# keywords
-keywords = [
-    "ACTION", "ADD", "AFTER", "ALL", "ALTER", "ANALYZE", "AND", "AS", "ASC",
-    "BEFORE", "BEGIN", "BETWEEN", "BY", "CASCADE", "CASE", "CAST", "CHECK",
-    "COLLATE", "COLUMN", "COMMIT", "CONSTRAINT", "CREATE", "CROSS", "CURRENT_DATE",
-    "CURRENT_TIME", "CURRENT_TIMESTAMP", "DEFAULT", "DEFERRABLE", "DEFERRED",
-    "DELETE", "DESC", "DISTINCT", "DROP", "EACH", "ELSE", "END", "ESCAPE",
-    "EXCEPT", "EXISTS", "FOR", "FOREIGN", "FROM", "FULL", "GROUP", "HAVING",
-    "IGNORE", "IMMEDIATE", "IN", "INITIALLY", "INNER", "INSERT", "INTERSECT",
-    "INTO", "IS", "ISNULL", "JOIN", "KEY", "LEFT", "LIKE", "LIMIT", "MATCH",
-    "NATURAL", "NO", "NOT", "NOTNULL", "NULL", "OF", "OFFSET", "ON", "OR", "ORDER BY",
-    "OUTER", "PRIMARY", "REFERENCES", "RELEASE", "RESTRICT", "RIGHT", "ROLLBACK",
-    "ROW", "SAVEPOINT", "SELECT", "SET", "TABLE", "TEMPORARY", "THEN", "TO",
-    "TRANSACTION", "TRIGGER", "UNION", "UNIQUE", "UPDATE", "USING", "VALUES",
-    "VIEW", "WHEN", "WHERE"
-]
+from PyQt4 import QtGui, QtCore
+from pygments import highlight
+from pygments.lexers import sql
+from pygments.formatter import Formatter
+from pygments.lexers._postgres_builtins import KEYWORDS, DATATYPES, PSEUDO_TYPES, PLPGSQL_KEYWORDS
+import src.explorer_model as em
 
-# functions
-functions = [
-    "abs", "changes", "coalesce", "glob", "ifnull", "hex", "last_insert_rowid",
-    "length", "like", "lower", "ltrim", "max", "min", "nullif", "quote", "random",
-    "randomblob", "replace", "round", "rtrim", "soundex", "total_change", "trim",
-    "typeof", "upper", "zeroblob", "date", "datetime", "julianday", "strftime",
-    "avg", "count", "group_concat", "sum", "total"
-]
-
-# constants
-constants = ["null", "false", "true"]
 
 
 def getSqlDictionary():
-    return {'keyword': list(keywords), 'constant': list(constants), 'function': list(functions)}
+    return {'KEYWORDS': KEYWORDS,
+            'DATATYPES': DATATYPES,
+            'PSEUDO_TYPES': PSEUDO_TYPES,
+            'PLPGSQL_KEYWORDS': PLPGSQL_KEYWORDS
+    }
 
 
-class HighlightingRule:
-    def __init__(self, typ, regex):
-        self._type = typ
-        self._regex = regex
+def hex2QColor(c):
+    r = int(c[0:2], 16)
+    g = int(c[2:4], 16)
+    b = int(c[4:6], 16)
+    return QtGui.QColor(r, g, b)
 
-    def type(self):
-        return self._type
 
-    def regex(self):
-        return QtCore.QRegExp(self._regex)
+class QFormatter(Formatter):
+    def __init__(self):
+        Formatter.__init__(self)
+        self.data = []
+
+        # Create a dictionary of text styles, indexed
+        # by pygments token names, containing QTextCharFormat
+        # instances according to pygments' description
+        # of each style
+
+        self.styles = {}
+        for token, style in self.style:
+            qtf = QtGui.QTextCharFormat()
+
+            if style['color']:
+                qtf.setForeground(hex2QColor(style['color']))
+            if style['bgcolor']:
+                qtf.setBackground(hex2QColor(style['bgcolor']))
+            if style['bold']:
+                qtf.setFontWeight(QtGui.QFont.Bold)
+            if style['italic']:
+                qtf.setFontItalic(True)
+            if style['underline']:
+                qtf.setFontUnderline(True)
+            self.styles[str(token)] = qtf
+        # missing token
+        self.styles['Token.Literal.String.Name'] = self.styles['Token.Literal.String']
+
+    def format(self, tokensource, outfile):
+        # global styles
+        # We ignore outfile, keep output in a buffer
+        self.data = []
+
+        # Just store a list of styles, one for each character
+        # in the input. Obviously a smarter thing with
+        # offsets and lengths is a good idea!
+
+        for ttype, value in tokensource:
+            l = len(value)
+            t = str(ttype)
+            # if t in self.styles.keys():
+            self.data.extend([self.styles[t], ] * l)
 
 
 class SqlHighlighter(QtGui.QSyntaxHighlighter):
-    COLOR_KEYWORD = QtGui.QColor(0x00, 0x00, 0xE6)
-    COLOR_FUNCTION = QtGui.QColor(0xCE, 0x7B, 0x00)
-    COLOR_COMMENT = QtGui.QColor(0x96, 0x96, 0x96)
-    COLOR_CONSTANT = QtCore.Qt.magenta
-    COLOR_IDENTIFIER = QtGui.QColor(0x00, 0x99, 0x00)
-    COLOR_PARAMETER = QtGui.QColor(0x25, 0x9D, 0x9D)
-
+    # from ralsina.me/static/highlighter.py
     def __init__(self, parent):
         QtGui.QSyntaxHighlighter.__init__(self, parent)
-        self.rules = []
-        self.styles = {}
 
-        # keyword
-        format = QtGui.QTextCharFormat()
-        format.setForeground(QtGui.QBrush(self.COLOR_KEYWORD, QtCore.Qt.SolidPattern))
-        # format.setFontWeight(QtGui.QFont.Bold)
-        self.styles['keyword'] = format
-
-        # function and delimiter
-        format = QtGui.QTextCharFormat()
-        format.setForeground(QtGui.QBrush(self.COLOR_FUNCTION, QtCore.Qt.SolidPattern))
-        self.styles['function'] = format
-        self.styles['delimiter'] = format
-
-        # identifier
-        format = QtGui.QTextCharFormat()
-        format.setForeground(QtGui.QBrush(self.COLOR_IDENTIFIER, QtCore.Qt.SolidPattern))
-        self.styles['identifier'] = format
-
-        # comment
-        format = QtGui.QTextCharFormat()
-        format.setForeground(QtGui.QBrush(self.COLOR_COMMENT, QtCore.Qt.SolidPattern))
-        self.styles['comment'] = format
-
-        # constant (numbers, strings)
-        format = QtGui.QTextCharFormat()
-        format.setForeground(QtGui.QBrush(self.COLOR_CONSTANT, QtCore.Qt.SolidPattern))
-        self.styles['constant'] = format
-
-        self.rules = []
-
-        rules = getSqlDictionary()
-
-        for name in self.styles.keys():
-            if name not in rules:
-                continue
-            for value in rules[name]:
-                regex = QtCore.QRegExp(u"\\b%s\\b" % QtCore.QRegExp.escape(value), QtCore.Qt.CaseInsensitive)
-                rule = HighlightingRule(name, regex)
-                self.rules.append(rule)
-
-        # delimiter
-        regex = QtCore.QRegExp("[\)\(]")
-        rule = HighlightingRule('delimiter', regex)
-        self.rules.append(rule)
-
-        # identifier
-        regex = QtCore.QRegExp(r'"[^"\\]*(\\.[^"\\]*)*"')
-        regex.setMinimal(True)
-        rule = HighlightingRule('identifier', regex)
-        self.rules.append(rule)
-
-        # constant (numbers, strings)
-        # string
-        regex = QtCore.QRegExp(r"'[^'\\]*(\\.[^'\\]*)*'")
-        regex.setMinimal(True)
-        rule = HighlightingRule('constant', regex)
-        self.rules.append(rule)
-        # number
-        regex = QtCore.QRegExp(r'\b[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\b')
-        regex.setMinimal(True)
-        rule = HighlightingRule('constant', regex)
-        self.rules.append(rule)
-
-        # single-line comment
-        regex = QtCore.QRegExp("--.*$")
-        rule = HighlightingRule('comment', regex)
-        self.rules.append(rule)
-
-        # multi-line comment
-        self.multiLineCommentStart = QtCore.QRegExp("/\\*")
-        self.multiLineCommentEnd = QtCore.QRegExp("\\*/")
+        # Keep the formatter and lexer, initializing them
+        # may be costly.
+        self.formatter = QFormatter()
+        self.lexer = sql.PostgresLexer()
 
     def highlightBlock(self, text):
-        index = 0
-        rule_sel = None
-        rule_index = -1
+        """Takes a block, applies format to the document.
+        according to what's in it.
+        """
 
-        while index < text.length():
-            # search for the rule that matches starting from the less index
-            rule_sel = None
-            rule_index = -1
-            rule_length = 0
-            for rule in self.rules:
-                regex = rule.regex()
-                pos = regex.indexIn(text, index)
-                if pos >= 0:
-                    if rule_sel is None or rule_index > pos:
-                        rule_sel = rule
-                        rule_index = pos
-                        rule_length = regex.cap(0).length()
+        # I need to know where in the document we are,
+        # because our formatting info is global to
+        # the document
+        cb = self.currentBlock()
+        p = cb.position()
 
-            if rule_sel is None:  # no rule matches
-                break
+        # The \n is not really needed, but sometimes
+        # you are in an empty last block, so your position is
+        # **after** the end of the document.
+        text = unicode(self.document().toPlainText()) + '\n'
 
-            # apply the rule found before
-            self.setFormat(rule_index, rule_length, self.styles[rule_sel.type()])
-            index = rule_index + rule_length
+        # Yes, re-highlight the whole document.
+        # There **must** be some optimizacion possibilities
+        # but it seems fast enough.
+        highlight(text, self.lexer, self.formatter)
 
-        self.setCurrentBlockState(0)
-
-        # handle with multiline comments
-        index = 0
-        if self.previousBlockState() != 1:
-            index = self.multiLineCommentStart.indexIn(text, index)
-        while index >= 0:
-            # if the last applied rule is a single-line comment,
-            # then avoid multiline comments that start after it
-            if rule_sel is not None and rule_sel.type() == 'comment' and index >= rule_index:
-                break
-
-            pos = self.multiLineCommentEnd.indexIn(text, index)
-            comment_length = 0
-            if pos < 0:
-                self.setCurrentBlockState(1)
-                comment_length = text.length() - index;
-            else:
-                comment_length = pos - index + self.multiLineCommentEnd.cap(0).length()
-            self.setFormat(index, comment_length, self.styles['comment'])
-            index = self.multiLineCommentStart.indexIn(text, index + comment_length)
+        # Just apply the formatting to this block.
+        # For titles, it may be necessary to backtrack
+        # and format a couple of blocks **earlier**.
+        for i in range(len(unicode(text))):
+            try:
+                self.setFormat(i, 1, self.formatter.data[p + i])
+            except IndexError:
+                pass
 
 
 class CompletionModel(em.ExplorerModel):
@@ -206,6 +138,7 @@ class CompletionModel(em.ExplorerModel):
             'SCHEMA': QtGui.QIcon(QtGui.QPixmap(':/schema.png')),
             'FUNCTION': QtGui.QIcon(QtGui.QPixmap(':/function.png')),
             'DATABASE': QtGui.QIcon(QtGui.QPixmap(':/database.png')),
+            'OTHER': QtGui.QIcon(QtGui.QPixmap(':/star.png')),
         }
 
         self.nodes = {
@@ -219,19 +152,17 @@ class CompletionModel(em.ExplorerModel):
             'SPECIAL': em.SpecialNode,
             'SCHEMA': em.SchemaNode,
             'FUNCTION': em.FunctionNode,
+            'OTHER': em.Node,
         }
 
         super(CompletionModel, self).__init__(None, self.parent, "Database Model")
         self._rootNode = em.Node(self.database, parent=None, icon=self.icons['DATABASE'])
-        self.setupModel()
+        self.setupDBStructureModel()
+        self.setupDictionnaryModel()
 
-    def getQueryResult(self, query):
-        conn = self.database.newConnection()
-        headers, res, status = db.execute(conn, query)
-        conn.close()
-        return headers, res, status
-
-    def setupModel(self):
+    def setupDBStructureModel(self):
+        """Add database structure informations to the model
+        """
         # self.removeRows(0, self.rowCount(QtCore.QModelIndex()))
 
         query = """SELECT * FROM ((
@@ -257,7 +188,7 @@ class CompletionModel(em.ExplorerModel):
         )
         ) as t
         ORDER BY 1,2,3"""
-        headers, res, status = self.getQueryResult(query)
+        headers, res, status = self.database.execute(query)
 
         # populate data
         parentSchema = None
@@ -266,7 +197,14 @@ class CompletionModel(em.ExplorerModel):
                 schemaItem = em.SchemaNode(schema, parent=self._rootNode, icon=self.icons['SCHEMA'])
                 parentSchema = schema  # Set the schema name as the parent
             if type_ in self.nodes.keys():
-                self.nodes[type_](name, oid=oid, parent=schemaItem, icon=self.icons[type_])
+                node = self.nodes[type_](name, oid=oid, parent=schemaItem, icon=self.icons[type_])
+
+    def setupDictionnaryModel(self):
+        dictionary = getSqlDictionary()
+        type_ = 'OTHER'
+        for nameList in dictionary.itervalues():
+            for name in nameList:
+                self.nodes[type_](name, oid=None, parent=self._rootNode, icon=self.icons[type_])
 
 
 class SqlCompleter(QtGui.QCompleter):
@@ -274,11 +212,12 @@ class SqlCompleter(QtGui.QCompleter):
         # dictionary = getSqlDictionary()
         # wordlist = QtCore.QStringList()
         # for name, value in dictionary.iteritems():
-        #     wordlist << value
+        # wordlist << value
 
         # setup the completer
         super(SqlCompleter, self).__init__(*args)
-        self.setModelSorting(QtGui.QCompleter.CaseInsensitivelySortedModel)
+        # self.setModelSorting(QtGui.QCompleter.CaseInsensitivelySortedModel)
+        self.setModelSorting(QtGui.QCompleter.UnsortedModel)
         self.setWrapAround(True)
         self.setCompletionMode(QtGui.QCompleter.PopupCompletion)
         self.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
@@ -301,24 +240,39 @@ class SqlCompleter(QtGui.QCompleter):
         super(SqlCompleter, self).setModel(model)
 
 
-class QueryEditor(QtGui.QPlainTextEdit):
-    """from http://doc.qt.digia.com/4.6/tools-customcompleter.html
-    and QGiS dbmanager plugin"""
+class SqlEdit(QtGui.QPlainTextEdit):
+
     def __init__(self, *args, **kwargs):
-        super(QueryEditor, self).__init__(*args, **kwargs)
+        super(SqlEdit, self).__init__(*args, **kwargs)
         # QtGui.QTextEdit.__init__(self, *args, **kwargs)
         self.completer = SqlCompleter()
         self.completer.setWidget(self)
-        self.highlighter = SqlHighlighter(self)
+        self.highlighter = SqlHighlighter(self.document())
 
+        self.setFrameStyle(QtGui.QFrame.NoFrame)
+        self.highlight()
+        #self.setLineWrapMode(QPlainTextEdit.NoWrap)
+        # self.setStyleSheet("background-color: grey")
+
+        self.font =QtGui.QFont("Monospace", 10)
+        self.font.setStyleHint(QtGui.QFont.Courier)
+        self.document().setDefaultFont(self.font)
+        fontMetrics = QtGui.QFontMetrics(self.font)
+        self.setTabStopWidth(fontMetrics.width(' ') * 4)
+
+        self.cursorPositionChanged.connect(self.highlight)
         self.connect(self.completer, QtCore.SIGNAL("activated(const QString&)"), self.insertCompletion)
 
     def insertCompletion(self, completion):
+        # tc = self.textCursor()
+        # extra = completion.length() - self.completer.completionPrefix().length()
+        # tc.movePosition(QtGui.QTextCursor.Left)
+        # tc.movePosition(QtGui.QTextCursor.EndOfWord)
+        # tc.insertText(completion.right(extra))
+        # self.setTextCursor(tc)
         tc = self.textCursor()
-        extra = completion.length() - self.completer.completionPrefix().length()
-        tc.movePosition(QtGui.QTextCursor.Left)
-        tc.movePosition(QtGui.QTextCursor.EndOfWord)
-        tc.insertText(completion.right(extra))
+        tc.movePosition(QtGui.QTextCursor.Left, QtGui.QTextCursor.KeepAnchor, self.completer.completionPrefix().length())
+        tc.insertText(completion)
         self.setTextCursor(tc)
 
     def textUnderCursor(self):
@@ -326,9 +280,11 @@ class QueryEditor(QtGui.QPlainTextEdit):
         # care of dots, but we need them
         tc = self.textCursor()
         isStartOfWord = False
+        if tc.atStart() or (tc.positionInBlock() == 0):
+            isStartOfWord = True
         while not isStartOfWord:
             tc.movePosition(QtGui.QTextCursor.PreviousCharacter, QtGui.QTextCursor.KeepAnchor)
-            if tc.atStart():
+            if tc.atStart() or (tc.positionInBlock() == 0):
                 isStartOfWord = True
             elif QtCore.QChar(tc.selectedText()[0]).isSpace():
                 isStartOfWord = True
@@ -389,102 +345,114 @@ class QueryEditor(QtGui.QPlainTextEdit):
     def text(self, t):
         self.setPlainText(t)
 
+    def setText(self, t):
+        self.text(t)
 
-# class QueryEditor(QsciScintilla):
-# def __init__(self, *args, **kwargs):
-# super(QueryEditor, self).__init__(*args, **kwargs)
-#
-# # Set the default font
-# # font = QtGui.QFont()
-#         # font.setFamily('Courier')
-#         # font.setFixedPitch(True)
-#         # font.setPointSize(10)
-#         # # Margin 0 is used for line numbers
-#         # fontmetrics = QtGui.QFontMetrics(font)
-#
-#         # Lexer
-#         lexer = QsciLexerSQL(self)
-#         self.setLexer(lexer)
-#
-#         #AutoCompletion
-#         api = Qsci.QsciAPIs(lexer)
-#         for cmd in sql_commands:
-#             api.add(cmd)
-#         api.prepare()
-#         self.setAutoCompletionThreshold(2)
-#         self.setAutoCompletionSource(QsciScintilla.AcsAPIs)
-#
-#         #General
-#         self.setUtf8(True)
-#         self.setFolding(QsciScintilla.BoxedTreeFoldStyle)
-#         self.setBraceMatching(QsciScintilla.SloppyBraceMatch)
-#         self.setFolding(QsciScintilla.BoxedTreeFoldStyle)
-#         # self.setFont(font)
-#
-#         #LineHighlight
-#         self.setCaretLineVisible(True)
-#         self.setCaretLineBackgroundColor(QtGui.QColor("gainsboro"))
-#
-#         #AutoIndentation
-#         self.setAutoIndent(True)
-#         self.setIndentationGuides(True)
-#         self.setIndentationsUseTabs(True)
-#         self.setIndentationWidth(4)
-#
-#         #Margins
-#         self.setMarginsBackgroundColor(QtGui.QColor("gainsboro"))
-#         # self.setMarginsFont(font)
-#         self.setMarginsFont(QtGui.QFont("Consolas", 9, 87))
-#         self.setMarginLineNumbers(0, True)
-#         self.setMarginType(1, self.SymbolMargin)
-#         self.setMarginWidth(0, QtCore.QString("-------"))
-#         # self.setMarginWidth(1, QtCore.QString().setNum(10))
-#
-#         #Indentation
-#         self.setIndentationsUseTabs(True)
-#         self.setIndentationGuides(True)
-#         self.setIndentationWidth(4)
-#
-#     def getText(self):
-#         return self.text()
+    def highlight(self):
+        hi_selection = QtGui.QTextEdit.ExtraSelection()
+        hi_selection.format.setBackground(self.palette().alternateBase())
+        hi_selection.format.setProperty(QtGui.QTextFormat.FullWidthSelection, QtCore.QVariant(True))
+        hi_selection.cursor = self.textCursor()
+        hi_selection.cursor.clearSelection()
+        self.setExtraSelections([hi_selection])
+
+    def numberbarPaint(self, number_bar, event):
+        font_metrics = self.fontMetrics()
+        current_line = self.document().findBlock(self.textCursor().position()).blockNumber() + 1
+
+        block = self.firstVisibleBlock()
+        line_count = block.blockNumber()
+        painter = QtGui.QPainter(number_bar)
+        painter.fillRect(event.rect(), self.palette().base())
+
+        # Iterate over all visible text blocks in the document.
+        while block.isValid():
+            line_count += 1
+            block_top = self.blockBoundingGeometry(block).translated(self.contentOffset()).top()
+
+            # Check if the position of the block is out side of the visible area.
+            if not block.isVisible() or block_top >= event.rect().bottom():
+                break
+
+            # We want the line number for the selected line to be bold.
+            if line_count == current_line:
+                font = painter.font()
+                font.setBold(True)
+                painter.setFont(font)
+            else:
+                font = painter.font()
+                font.setBold(False)
+                painter.setFont(font)
+
+            # Draw the line number right justified at the position of the line.
+            paint_rect = QtCore.QRect(0, block_top, number_bar.width(), font_metrics.height())
+            painter.drawText(paint_rect, QtCore.Qt.AlignRight, unicode(line_count))
+
+            block = block.next()
+
+        painter.end()
 
 
-# class QueryEditor(Qutepart):
-# def __init__(self, *args, **kwargs):
-#         super(QueryEditor, self).__init__(*args, **kwargs)
-#         self.completionEnabled = True
-#         self.completionThreshold = 2
-#         self.indentUseTabs = True
-#         self.indentWidth = 4
-#         self.detectSyntax(xmlFileName="sql-postgresql.xml")
-#
-#     def setText(self, text):
-#         self.text = text
-#
-#     def getText(self):
-#         return self.text
+class NumberBar(QtGui.QWidget):
+    def __init__(self, edit):
+        QtGui.QWidget.__init__(self, edit)
+        self.edit = edit
+        self.adjustWidth(1)
 
-# sql_commands = ['ACCESS', 'ADD', 'ALL', 'ALTER TABLE', 'AND', 'ANY', 'AS',
-#                 'ASC', 'AUDIT', 'BETWEEN', 'BY', 'CASE', 'CHAR', 'CHECK',
-#                 'CLUSTER', 'COLUMN', 'COMMENT', 'COMPRESS', 'CONNECT', 'COPY',
-#                 'CREATE', 'CURRENT', 'DATABASE', 'DATE', 'DECIMAL', 'DEFAULT',
-#                 'DELETE FROM', 'DELIMITER', 'DESC', 'DESCRIBE', 'DISTINCT', 'DROP',
-#                 'ELSE', 'ENCODING', 'ESCAPE', 'EXCLUSIVE', 'EXISTS', 'EXTENSION',
-#                 'FILE', 'FLOAT', 'FOR', 'FORMAT', 'FORCE_QUOTE', 'FORCE_NOT_NULL',
-#                 'FREEZE', 'FROM', 'FULL', 'FUNCTION', 'GRANT', 'GROUP BY',
-#                 'HAVING', 'HEADER', 'IDENTIFIED', 'IMMEDIATE', 'IN', 'INCREMENT',
-#                 'INDEX', 'INITIAL', 'INSERT INTO', 'INTEGER', 'INTERSECT', 'INTO',
-#                 'IS', 'JOIN', 'LEFT', 'LEVEL', 'LIKE', 'LIMIT', 'LOCK', 'LONG',
-#                 'MAXEXTENTS', 'MINUS', 'MLSLABEL', 'MODE', 'MODIFY', 'NOAUDIT',
-#                 'NOCOMPRESS', 'NOT', 'NOWAIT', 'NULL', 'NUMBER', 'OIDS', 'OF',
-#                 'OFFLINE', 'ON', 'ONLINE', 'OPTION', 'OR', 'ORDER BY', 'OUTER',
-#                 'OWNER', 'PCTFREE', 'PRIMARY', 'PRIOR', 'PRIVILEGES', 'QUOTE',
-#                 'RAW', 'RENAME', 'RESOURCE', 'REVOKE', 'RIGHT', 'ROW', 'ROWID',
-#                 'ROWNUM', 'ROWS', 'SELECT', 'SESSION', 'SET', 'SHARE', 'SIZE',
-#                 'SMALLINT', 'START', 'SUCCESSFUL', 'SYNONYM', 'SYSDATE', 'TABLE',
-#                 'TEMPLATE', 'THEN', 'TO', 'TRIGGER', 'TRUNCATE', 'UID', 'UNION',
-#                 'UNIQUE', 'UPDATE', 'USE', 'USER', 'USING', 'VALIDATE', 'VALUES',
-#                 'VARCHAR', 'VARCHAR2', 'VIEW', 'WHEN', 'WHENEVER', 'WHERE', 'WITH']
+    def paintEvent(self, event):
+        self.edit.numberbarPaint(self, event)
+        QtGui.QWidget.paintEvent(self, event)
+
+    def adjustWidth(self, count):
+        width = self.fontMetrics().width(unicode(count))
+        if self.width() != width:
+            self.setFixedWidth(width)
+
+    def updateContents(self, rect, scroll):
+        if scroll:
+            self.scroll(0, scroll)
+        else:
+            # It would be nice to do
+            # self.update(0, rect.y(), self.width(), rect.height())
+            # But we can't because it will not remove the bold on the
+            # current line if word wrap is enabled and a new block is
+            # selected.
+            self.update()
+
+
+class QueryEditor(QtGui.QFrame):
+    def __init__(self, *args):
+        QtGui.QFrame.__init__(self, *args)
+        self.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Sunken)
+        self.edit = SqlEdit()
+        self.number_bar = NumberBar(self.edit)
+
+        hbox = QtGui.QHBoxLayout(self)
+        hbox.setSpacing(0)
+        hbox.setMargin(0)
+        hbox.addWidget(self.number_bar)
+        hbox.addWidget(self.edit)
+
+        self.edit.blockCountChanged.connect(self.number_bar.adjustWidth)
+        self.edit.updateRequest.connect(self.number_bar.updateContents)
+
+    def getText(self):
+        return self.edit.getText()
+
+    def setText(self, text):
+        self.edit.setText(text)
+
+    def setCompletionModel(self, database):
+        self.edit.setCompletionModel(database)
+
+    def isModified(self):
+        return self.edit.document().isModified()
+
+    def setModified(self, modified):
+        self.edit.document().setModified(modified)
+
+    def setLineWrapMode(self, mode):
+        self.edit.setLineWrapMode(mode)
 
 if __name__ == "__main__":
     from PyQt4 import QtGui

@@ -23,7 +23,6 @@ class Database(object):
         self.database = database
         self.user = user
         self.password = password
-        self.connection_list = list()
 
     def newConnection(self):
         connection = psycopg2.connect(host=self.host,
@@ -32,35 +31,35 @@ class Database(object):
                                       user=self.user,
                                       password=self.password)
         connection.autocommit = True
-        self.connection_list.append(connection)
         return connection
 
-    def close(self):
-        [conn.close() for conn in self.connection_list if not conn.closed]
-
-
-def execute(connection, query, size=None):
-    cursor = connection.cursor()
-    try:
-        cursor.execute(query)
-    except Exception as e:
-        connection.rollback()
-        return None, DBError(e.__str__()), None
-    if cursor.description is not None:
-        headers = [c[0] for c in cursor.description]
-    else:
-        headers = list()
-    res = fetch(cursor, size)
-    status = cursor.statusmessage
-    cursor.close()
-    return headers, res, status
-
-
-def fetch(cursor, size=None):
-    try:
-        if size:
-            return cursor.fetchmany(size)
+    def execute(self, query, connection=None, size=None):
+        oneShot = False
+        if connection is None:
+            connection = self.newConnection()
+            oneShot = True
+        cursor = connection.cursor()
+        try:
+            cursor.execute(query)
+        except Exception as e:
+            connection.rollback()
+            return None, DBError(e.__str__()), None
+        if cursor.description is not None:
+            headers = [c[0] for c in cursor.description]
         else:
-            return cursor.fetchall()
-    except psycopg2.ProgrammingError, err:
-        return DBError(err)
+            headers = list()
+        res = self.fetch(cursor, size)
+        status = cursor.statusmessage
+        cursor.close()
+        if oneShot:
+            connection.close()
+        return headers, res, status
+
+    def fetch(self, cursor, size=None):
+        try:
+            if size:
+                return cursor.fetchmany(size)
+            else:
+                return cursor.fetchall()
+        except psycopg2.ProgrammingError, err:
+            return DBError(err)
