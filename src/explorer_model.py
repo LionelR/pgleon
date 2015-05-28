@@ -296,21 +296,6 @@ class ExplorerModel(QtCore.QAbstractItemModel):
         self.endInsertRows()
         return success
 
-    # DON'T use insertColumns as it's a QAbstractItemModel function
-    def insertColumnNames(self, position, columns, parent=QtCore.QModelIndex()):
-        """INPUTS: int, int, QModelIndex"""
-        parentNode = self.getNode(parent)
-        success = False
-        # if parentNode.typeInfo() in ("TABLE", "VIEW", "MATERIALIZED VIEW") and len(columns) > 0:
-        if len(columns) > 0:
-            self.beginInsertRows(parent, position, position + len(columns) - 1)
-            for column in columns:
-                # childCount = parentNode.childCount()
-                childNode = ColumnNode(column)
-                success = parentNode.insertChild(position, childNode)
-            self.endInsertRows()
-            return success
-
     def removeRows(self, position, rows, parent=QtCore.QModelIndex()):
         """
         INPUTS: int, int, QModelIndex

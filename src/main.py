@@ -190,14 +190,16 @@ class Main(MainUI):
 
     def onOpen(self):
         database = self.openDatabase()
-        # try:
-        connection = database.newConnection()
-        connection.close()
-        queryBook = QueryBook(database=database, icon=self.icon)
-        self.queryBookList.append(queryBook)
-        queryBook.show()
-        # except Exception, error:
-        #     QtGui.QMessageBox.critical(self, "Error", str(error), QtGui.QMessageBox.Ok)
+        try:
+            connection = database.newConnection()
+            connection.close()
+        except Exception, error:
+            QtGui.QMessageBox.critical(self, "Error", str(error), QtGui.QMessageBox.Ok)
+            logger.debug(error)
+        else:
+            queryBook = QueryBook(database=database, icon=self.icon)
+            self.queryBookList.append(queryBook)
+            queryBook.show()
 
     def openDatabase(self):
         """Create an instance of the current selected database"""

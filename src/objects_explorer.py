@@ -218,6 +218,7 @@ class ObjectsExplorer(ExplorerUI):
         :param index: Node's index in the tree
         :return:
         """
+        type_ = 'COLUMN'
         parentNode = self.model.getNode(index)
         if parentNode.typeInfo() in ("TABLE", "VIEW", "MATERIALIZED VIEW"):
             childCount = parentNode.childCount()
@@ -225,7 +226,12 @@ class ObjectsExplorer(ExplorerUI):
                 self.model.removeRows(0, childCount, index)
             schemaName, tableName = self.getNames(index)
             columns = self.getColumnsNamesAndDesc(schemaName, tableName)
-            self.model.insertColumnNames(0, columns, index)
+            if len(columns) > 0:
+                self.model.beginInsertRows(index, 0, len(columns) - 1)
+                for column in columns[::-1]:
+                    print(column)
+                    childNode = self.nodes[type_](column, oid=None, parent=parentNode, icon=self.icons[type_])
+                self.model.endInsertRows()
 
     def showSelectQuery(self, index):
         """
