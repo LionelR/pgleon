@@ -12,6 +12,7 @@ from ui.widgets.qtable import QTableModel
 from src.objects_explorer import ObjectsExplorer
 from src.bookmarks_explorer import BookMarksExplorer
 from src.conf import DBConfig, Bookmark
+from src.explain_model import ExplainModel
 import sqlparse
 import time
 import resources_rc
@@ -111,7 +112,7 @@ class QueryPage(QueryPageUI):
         """Execute a query.
         Parameters:
         prefix: text to prepend to the text contained in the uiQueryEditor before
-        executing it as a query. Normally a word like EXPLAIN or ANALYSE
+        executing it as a query. Normally a word like EXPLAIN
         """
         query = self.currentQuery()
         if query.strip() == "":
@@ -127,7 +128,7 @@ class QueryPage(QueryPageUI):
     def executeToCSV(self, filename):
         """Execute the query and set the result in a CSV file
         Parameters:
-        filename: complete path of the resulting CSV file
+        filename: absolute path of the resulting CSV file
         """
         query = self.currentQuery()
         if query.strip() == "":
@@ -200,11 +201,23 @@ class QueryPage(QueryPageUI):
             self.uiTab.setCurrentWidget(self.uiQueryMsg)
             self.setStatus('')
         else:
-            self.model = QTableModel(res, headers, self)
-            self.uiQueryResult.setModel(self.model)
-            self.uiQueryResult.resizeColumnsToContents()
-            # self.uiQueryResult.resizeRowsToContents() #Very slow
-            self.uiTab.setCurrentWidget(self.uiQueryResult)
+            if headers[0].strip() == "QUERY PLAN": # We are with a query plan model
+                self.model = ExplainModel(res)
+                self.uiExplainResult.setModel(self.model)
+                self.uiExplainResult.resizeColumnToContents(0)
+                self.uiExplainResult.expandAll()
+                self.uiStackedResult.setCurrentWidget(self.uiExplainResult)
+            else: # Results are from a standard query
+                self.model = QTableModel(res, headers, self)
+                self.uiQueryResult.setModel(self.model)
+                self.uiStackedResult.setCurrentWidget(self.uiQueryResult)
+                self.uiQueryResult.resizeColumnsToContents()
+                self.uiQueryResult.setSortingEnabled(True)
+                self.uiQueryResult.setAlternatingRowColors(True)
+                self.uiQueryResult.verticalHeader().setVisible(True)
+                # self.uiQueryResult.horizontalHeader().setStretchLastSection(True)
+                # self.uiQueryResult.resizeRowsToContents() #Very slow
+            self.uiTab.setCurrentWidget(self.uiStackedResult)
             self.setStatus(status)
             self.uiQueryMsg.clear()
             # self._postProcessing()
@@ -244,7 +257,6 @@ class QueryPage(QueryPageUI):
             self.uiTab.setCurrentWidget(self.uiQueryMsg)
             self.setStatus('')
         else:
-            print(res)
             if self.model is None:  # First iteration, we create the model at set it to the view
                 self.model = QTableModel(res, headers, self)
                 self.uiQueryResult.setModel(self.model)

@@ -87,7 +87,7 @@ class BookMarksExplorer(ExplorerUI):
             page.uiQueryEditor.setText(parentNode.query())
             page.onRewriteQuery()
             page.setCurrentName(parentNode.name())
-            page.onRunQuery()
+            # page.onRunQuery()
 
     def onContextMenu(self, point):
         index = self.view.indexAt(point)

@@ -220,6 +220,13 @@ class ExplorerModel(QtCore.QAbstractItemModel):
             if index.column() == 0:
                 return node.icon()
 
+        if role == QtCore.Qt.ToolTipRole and type(node) == BookMarkNode:
+            query =  node.query()
+            if len(query) > 100:
+                query = query[:100] + "..."
+            return query
+
+
     def setData(self, index, value, role=QtCore.Qt.EditRole):
         """INPUTS: QModelIndex, QVariant, int (flag)"""
         if index.isValid():

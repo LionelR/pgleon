@@ -38,6 +38,8 @@ class QTableModel(QAbstractTableModel):
     def headerData(self, col, orientation, role):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
             return QVariant(self.headers[col])
+        if orientation == Qt.Vertical and role == Qt.DisplayRole:
+            return QVariant(col)
         return QVariant()
 
     def sort(self, Ncol, order):

@@ -21,13 +21,18 @@ class QueryPageUI(QtGui.QWidget):
 
         self.uiQueryEditor = QueryEditor(self)
         self.uiQueryResult = QtGui.QTableView(self)
-        self.uiQueryResult.setAlternatingRowColors(True)
+        self.uiExplainResult = QtGui.QTreeView(self)
         self.uiQueryMsg = QtGui.QTextEdit(self)
         self.uiStatusLabel = QtGui.QLabel(self)
         self.uiTimerLabel = QtGui.QLabel(self)
 
+        self.uiStackedResult = QtGui.QStackedWidget()
+        self.uiStackedResult.addWidget(self.uiQueryResult)
+        self.uiStackedResult.addWidget(self.uiExplainResult)
+        self.uiStackedResult.setCurrentWidget(self.uiQueryResult)
+
         self.uiTab = QtGui.QTabWidget(self)
-        self.uiTab.addTab(self.uiQueryResult, "Results")
+        self.uiTab.addTab(self.uiStackedResult, "Results")
         self.uiTab.addTab(self.uiQueryMsg, "Messages")
 
         self.uiVSplitter = QtGui.QSplitter(QtCore.Qt.Vertical)

@@ -49,6 +49,7 @@ class ObjectsExplorer(ExplorerUI):
         self.view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.view.setUniformRowHeights(True)
         self.view.setAnimated(True)
+        self.view.setExpandsOnDoubleClick(False)
         self.view.setModel(self.model)
 
         self.setupExplorer()
@@ -229,7 +230,6 @@ class ObjectsExplorer(ExplorerUI):
             if len(columns) > 0:
                 self.model.beginInsertRows(index, 0, len(columns) - 1)
                 for column in columns[::-1]:
-                    print(column)
                     childNode = self.nodes[type_](column, oid=None, parent=parentNode, icon=self.icons[type_])
                 self.model.endInsertRows()
 
