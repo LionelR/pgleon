@@ -286,11 +286,11 @@ class QueryPage(QueryPageUI):
         formattedQuery = sqlparse.format(query, keyword_case="upper", reindent=True, indent_width=4, indent_tabs=False)
         self.uiQueryEditor.setText(formattedQuery)
 
-    def onSetVertical(self):
-        self.uiVSplitter.setOrientation(QtCore.Qt.Vertical)
-
-    def onSetHorizontal(self):
-        self.uiVSplitter.setOrientation(QtCore.Qt.Horizontal)
+    def onChangeOrientation(self):
+        if self.uiChangeOrientationAction.isChecked():
+            self.uiVSplitter.setOrientation(QtCore.Qt.Horizontal)
+        else:
+            self.uiVSplitter.setOrientation(QtCore.Qt.Vertical)
 
     def onTimeOut(self):
         self.time += 1
@@ -380,48 +380,44 @@ class QueryPage(QueryPageUI):
                 newBookmark.save()
 
     def setupToolBar(self):
-        self.uiRunAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/run.png')), '&Run', self)
+        self.uiRunAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/run.png')), '&Run the query', self)
         self.uiRunAction.setShortcut('Ctrl+R')
         self.uiRunAction.setStatusTip('Run query')
         self.uiRunAction.triggered.connect(self.onRunQuery)
 
         self.uiCSVExportAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/csv.png')), 'Export as CSV', self)
         self.uiCSVExportAction.setShortcut('Ctrl+Shift+R')
-        self.uiCSVExportAction.setStatusTip('Export query results to CSV file')
+        self.uiCSVExportAction.setStatusTip('Export the result to a CSV file')
         self.uiCSVExportAction.setIconVisibleInMenu(True)
         self.uiCSVExportAction.triggered.connect(self.onExportToCSV)
 
-        self.uiStopAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/stop.png')), '&Stop', self)
+        self.uiStopAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/stop.png')), '&Stop the running query', self)
         self.uiStopAction.setShortcut('Ctrl+Q')
         self.uiStopAction.setStatusTip('Stop the current query')
         self.uiStopAction.triggered.connect(self.onCancelQuery)
 
-        self.uiExplainAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/explain.png')), '&Explain', self)
+        self.uiExplainAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/explain.png')), '&Explain the query', self)
         self.uiExplainAction.setShortcut('Ctrl+E')
         self.uiExplainAction.setStatusTip('Explain query')
         self.uiExplainAction.setIconVisibleInMenu(True)
         self.uiExplainAction.triggered.connect(self.onExplainQuery)
 
-        self.uiAnalyseAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/analyse.png')), '&Analyse', self)
+        self.uiAnalyseAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/analyse.png')), '&Analyse the query', self)
         self.uiAnalyseAction.setShortcut('Ctrl+Shift+E')
         self.uiAnalyseAction.setStatusTip('Analyse query')
         self.uiAnalyseAction.setIconVisibleInMenu(True)
         self.uiAnalyseAction.triggered.connect(self.onAnalyseQuery)
 
-        self.uiRewriteAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/rewrite.png')), 'Rewrite', self)
+        self.uiRewriteAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/rewrite.png')), 'Rewrite the query in a beautiful manner', self)
         self.uiRewriteAction.setShortcut('Ctrl+B')
         self.uiRewriteAction.setStatusTip('Rewrite query in a beautiful manner')
         self.uiRewriteAction.triggered.connect(self.onRewriteQuery)
 
-        self.uiSetVerticalAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/vertical.png')), 'Vertical', self)
-        self.uiSetVerticalAction.setShortcut('Ctrl+Shift+V')
-        self.uiSetVerticalAction.setStatusTip('Set the query page vertically')
-        self.uiSetVerticalAction.triggered.connect(self.onSetVertical)
-
-        self.uiSetHorizontalAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/horizontal.png')), 'Horizontal', self)
-        self.uiSetHorizontalAction.setShortcut('Ctrl+Shift+H')
-        self.uiSetHorizontalAction.setStatusTip('Set the query page horizontally')
-        self.uiSetHorizontalAction.triggered.connect(self.onSetHorizontal)
+        self.uiChangeOrientationAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/horizontal.png')), 'Change orientation', self)
+        self.uiChangeOrientationAction.setShortcut('Ctrl+Shift+H')
+        self.uiChangeOrientationAction.setStatusTip('Change the query page orientation')
+        self.uiChangeOrientationAction.setCheckable(True)
+        self.uiChangeOrientationAction.triggered.connect(self.onChangeOrientation)
 
         # self.uiMonitorAction = QtGui.QAction(QtGui.QIcon(QtGui.QPixmap(':/run.png')), 'Monitor', self)
         # self.uiMonitorAction.setShortcut('Ctrl+M')
@@ -445,8 +441,7 @@ class QueryPage(QueryPageUI):
         self.uiToolBar.addSeparator()
         self.uiToolBar.addAction(self.uiRewriteAction)
         self.uiToolBar.addSeparator()
-        self.uiToolBar.addAction(self.uiSetHorizontalAction)
-        self.uiToolBar.addAction(self.uiSetVerticalAction)
+        self.uiToolBar.addAction(self.uiChangeOrientationAction)
         self.uiToolBar.addSeparator()
         self.uiToolBar.addAction(self.uiSaveAsBookmarkAction)
 
@@ -494,11 +489,17 @@ class QueryBook(QueryBookUI):
         name = "Query_%i" % self._pageCount()
         page = QueryPage(database=self.database, parent=self)
         self.uiQueryBook.addTab(page, name)
+        page.setCurrentName(name)
         self.uiQueryBook.setCurrentWidget(page)
         return page
 
     def setPageTitle(self, index, title):
-        self.uiQueryBook.setTabText(index, title)
+        if len(title)>10:
+            rtitle = title[:10] + "..."
+        else:
+            rtitle = title
+        self.uiQueryBook.setTabText(index, rtitle)
+        self.uiQueryBook.setTabToolTip(index, title)
 
     def indexOf(self, page):
         return self.uiQueryBook.indexOf(page)
